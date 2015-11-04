@@ -77978,14 +77978,15 @@ ElectricLoadCenter:Distribution,
        \key TrackMeter
        \key FollowThermal
        \key FollowThermalLimitElectrical
-  N1,  \field Demand Limit Scheme Purchased Electric Demand Limit
+  N1,  \field Generator Demand Limit Scheme Purchased Electric Demand Limit
        \type real
        \units W
-  A4,  \field Track Schedule Name Scheme Schedule Name
+  A4,  \field Generator Track Schedule Name Scheme Schedule Name
        \note required when Generator Operation Scheme Type=TrackSchedule
+       \note schedule values in Watts
        \type object-list
        \object-list ScheduleNames
-  A5,  \field Track Meter Scheme Meter Name
+  A5,  \field Generator Track Meter Scheme Meter Name
        \note required when Generator Operation Scheme Type=TrackMeter
        \type external-list
        \external-list autoRDDmeter
@@ -78007,11 +78008,140 @@ ElectricLoadCenter:Distribution,
        \note or DirectCurrentWithInverterACStorage
        \type object-list
        \object-list ElecStorageList
-  A9;  \field Transformer Object Name
-       \note required when power needs to be output from on-site generation to the grid via transformer
+  A9,  \field Transformer Object Name
+       \note required when power needs to be output from on-site generation or storage to the grid via transformer
        \type object-list
        \object-list TransformerNames
 
+  A10, \field Storage Charge Operation Scheme
+       \note Select what type of power sources can be used to charge storage. 
+       \type choice
+       \key OnSiteGenerators
+       \note OnSiteGenerators indicates that all power produced on-site is used to charge
+       \key OnSiteGeneratorsSurplus
+       \note OnSiteGeneratorsSurplus indicates that power produced on-site that exceeds the facility demand is used to charge (legacy behavior)
+       \key ScheduledGridSupply
+       \note ScheduledGridSupply indicates that power used to charge will be drawn from the utility service connection, per a schedule.
+       \key OnSiteGeneratorSurplusPlusScheduledGridSupply
+       \note OnSiteGeneratorSurplusPlusScheduledGridSupply indicates that power used to charge will be the sum of power produced on-site 
+       \note that exceeds the facility demand and power drawn from the utility service connection, per a schedule.
+       \default OnSiteGeneratorsSurplus
+  N2 , \field Maximum Storage State of Charge Fraction
+       \note Fraction of storage capacity used as upper limit for controlling charging.
+       \type real
+       \default 1.0
+  N3,  \field Minimum Storage State of Charge Fraction
+       \note Fraction of storage capacity used as lower limit for controlling discharging.
+       \type real
+       \default 0.0
+  N4 , \field Maximum Storage Charge Grid Supply Power
+       \note Maximum rate that electric power can be taken from grid to charge storage
+       \note rate is modified by fractional values in the next field. 
+       \note required field if Storage Charge Operation Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply
+       \type real
+       \units W
+  A11, \field Storage Charge Grid Supply Power Fraction Schedule Name
+       \note controls timing and magnitude of charging from grid
+       \note required field if Storage Charge Operation Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply
+       \note schedule values should be fractions from 0.0 to 1.0, inclusive.
+       \type object-list
+       \object-list ScheduleNames
+  A12, \field Storage Converter Object Name
+       \note name of ElectricLoadCenter:Storage:Converter used to convert AC to DC when charging DC storage from grid supply.
+       \note Required field when both buss type is DirectCurrentWithInverterDCStorage and Storage Charge Operation
+       \note Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply.
+       \note A single bidirectional device will reference both an inverter object (DC to AC) and a converter object (AC to DC).
+       \type object-list
+       \object-list ConverterList
+  
+  A13, \field Storage Discharge Operation Scheme
+       \note Select method to govern how storage discharge is controlled
+       \type choice
+       \key FacilityDemandLimit
+       \note FacilityDemandLimit indicates that storage discharge control will limit facility power demand drawn from the utility service 
+       \note while accounting for any on-site generation
+       \key TrackFacilityElectricDemand
+       \note TrackFacilityElectricDemand indicates that storage discharge control will follow the facility power demand 
+       \note while accounting for any on-site generation (legacy behavior)
+       \default TrackFacilityElectricDemand
+       \key TrackSchedule
+       \note TrackSchedule indicates that storage discharge control will follow the schedule in the Storage Discharge Track Schedule Name. 
+       \key TrackMeter
+       \note TrackMeter indicates that storage discharge control will follow an electric meter named in the field called Storage Discharge Track Meter Name.  
+       \key ScheduledGridExport
+       \note ScheduledGridExport indicates that storage discharge control will export power to the utility service connection following 
+       \note the power level in the field called Maximum Storage Discharge Grid Export Power multiplied by the value in the schedule 
+       \note named in the field Storage Discharge Grid Export Fraction Schedule Name. 
+  N5,  \field Storage Discharge Purchased Electric Demand Limit
+       \note Target utility service demand power for discharge control 
+       \note required field for FacilityDemandLimit discharge operation scheme
+       \type real
+       \units W
+  A14, \field Storage Discharge Purchased Electric Demand Limit Fraction Schedule Name
+       \note Modifies the discharge demand limit over time.
+       \note if omitted a schedule value of 1.0 is used. 
+       \type object-list
+       \object-list ScheduleNames
+  A15, \field Storage Discharge Track Schedule Name
+       \note required when Storage Discharge Operation Scheme Type is set to TrackSchedule
+       \note schedule values in Watts
+       \type object-list
+       \object-list ScheduleNames
+  A16, \field Storage Discharge Track Meter Name
+       \note required when Generator Operation Scheme Type=TrackMeter
+       \type external-list
+       \external-list autoRDDmeter
+  N6 , \field Maximum Storage Discharge Grid Export Power
+       \note Maximum rate that electric power can be fed to grid from storage discharge
+       \type real
+       \units W
+  A17; \field Storage Discharge Grid Export Fraction Schedule Name
+       \note controls timing and magnitude of discharging to grid
+       \note required 
+  
+  ElectricLoadCenter:Storage:Converter,
+        \memo This model is for converting AC to DC for grid-connected DC storage
+        \min-fields 4
+   A1 , \field Name
+        \reference ConverterList
+   A2 , \field Availability Schedule Name
+        \note Availability schedule name for this system. Schedule value > 0 means the system is available.
+        \note If this field is blank, the converter is always available.
+        \type object-list
+        \object-list ScheduleNames
+   A3 , \field Power Conversion Efficiency Method
+        \type choice
+        \key SimpleFixedEfficiency
+        \default SimpleFixedEfficiency
+        \note SimpleFixedEfficiency indicates power conversion losses are based on Simple Fixed Efficiency
+        \key FunctionOfPowerCurveOrTable
+        \note FunctionOfPowerCurveOrTable indicates power conversion losses are a function of normalized power
+   N1 , \field Simple Fixed Efficiency
+        \minimum 0
+        \maximum 1.0
+        \default 0.95
+   N2,  \field Design Maximum Continuous Input Power
+        \type real
+        \units W
+   A4 , \field Efficiency Function of Power Curve Name
+        \note curve describes efficiency as a function of power
+        \note the "x" input for curve or table is the ratio of current input power divided by design power in the previous field
+        \type object-list
+        \object-list UniVariateCurves
+        \object-list UniVariateTables
+   N3 , \field Ancillary Power Consumed In Standby
+        \type real
+        \units W
+   A5 , \field Zone Name
+        \note enter name of zone to receive converter losses as heat
+        \note if blank then converter is assumed to be outdoors
+        \type object-list
+        \object-list ZoneNames
+   N4 ; \field Radiative Fraction
+        \note fraction of zone heat gains treated as thermal radiation
+        \minimum 0
+        \maximum 1.0
+        
 \group Water Systems
 
 WaterUse:Equipment,
