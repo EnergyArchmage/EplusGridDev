@@ -76918,6 +76918,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N2 , \field Generator 1 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A5 , \field Generator 2 Name
        \type object-list
        \object-list GeneratorNames
@@ -76939,6 +76941,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N4,  \field Generator 2 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A8,  \field Generator 3 Name
        \type object-list
        \object-list GeneratorNames
@@ -76960,6 +76964,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N6,  \field Generator 3 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A11, \field Generator 4 Name
        \type object-list
        \object-list GeneratorNames
@@ -76981,6 +76987,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N8,  \field Generator 4 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A14, \field Generator 5 Name
        \type object-list
        \object-list GeneratorNames
@@ -77002,6 +77010,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N10, \field Generator 5 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A17, \field Generator 6 Name
        \type object-list
        \object-list GeneratorNames
@@ -77023,6 +77033,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N12,  \field Generator 6 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A20, \field Generator 7 Name
        \type object-list
        \object-list GeneratorNames
@@ -77044,6 +77056,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N14, \field Generator 7 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A23, \field Generator 8 Name
        \type object-list
        \object-list GeneratorNames
@@ -77065,6 +77079,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N16, \field Generator 8 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A26, \field Generator 9 Name
        \type object-list
        \object-list GeneratorNames
@@ -77086,6 +77102,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N18, \field Generator 9 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A29, \field Generator 10 Name
        \type object-list
        \object-list GeneratorNames
@@ -77107,6 +77125,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N20, \field Generator 10 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A32, \field Generator 11 Name
        \type object-list
        \object-list GeneratorNames
@@ -77128,6 +77148,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N22, \field Generator 11 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A35, \field Generator 12 Name
        \type object-list
        \object-list GeneratorNames
@@ -77149,6 +77171,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N24, \field Generator 12 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A38, \field Generator 13 Name
        \type object-list
        \object-list GeneratorNames
@@ -77170,6 +77194,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N26, \field Generator 13 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A41, \field Generator 14 Name
        \type object-list
        \object-list GeneratorNames
@@ -77191,6 +77217,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N28, \field Generator 14 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A44, \field Generator 15 Name
        \type object-list
        \object-list GeneratorNames
@@ -77212,6 +77240,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N30, \field Generator 15 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A47, \field Generator 16 Name
        \type object-list
        \object-list GeneratorNames
@@ -77233,6 +77263,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N32, \field Generator 16 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A50, \field Generator 17 Name
        \type object-list
        \object-list GeneratorNames
@@ -77254,6 +77286,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N34, \field Generator 17 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A53, \field Generator 18 Name
        \type object-list
        \object-list GeneratorNames
@@ -77275,6 +77309,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N36, \field Generator 18 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A56, \field Generator 19 Name
        \type object-list
        \object-list GeneratorNames
@@ -77296,6 +77332,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N38, \field Generator 19 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A59, \field Generator 20 Name
        \type object-list
        \object-list GeneratorNames
@@ -77317,6 +77355,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N40, \field Generator 20 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A62, \field Generator 21 Name
        \type object-list
        \object-list GeneratorNames
@@ -77338,6 +77378,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N42, \field Generator 21 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A65, \field Generator 22 Name
        \type object-list
        \object-list GeneratorNames
@@ -77359,6 +77401,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N44, \field Generator 22 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A68, \field Generator 23 Name
        \type object-list
        \object-list GeneratorNames
@@ -77380,6 +77424,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N46, \field Generator 23 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A71, \field Generator 24 Name
        \type object-list
        \object-list GeneratorNames
@@ -77401,6 +77447,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N48, \field Generator 24 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A74, \field Generator 25 Name
        \type object-list
        \object-list GeneratorNames
@@ -77422,6 +77470,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N50, \field Generator 25 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A77, \field Generator 26 Name
        \type object-list
        \object-list GeneratorNames
@@ -77443,6 +77493,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N52, \field Generator 26 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A80, \field Generator 27 Name
        \type object-list
        \object-list GeneratorNames
@@ -77464,6 +77516,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N54, \field Generator 27 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A83, \field Generator 28 Name
        \type object-list
        \object-list GeneratorNames
@@ -77485,6 +77539,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N56, \field Generator 28 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A86, \field Generator 29 Name
        \type object-list
        \object-list GeneratorNames
@@ -77506,6 +77562,8 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N58, \field Generator 29 Rated Thermal to Electrical Power Ratio
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
   A89, \field Generator 30 Name
        \type object-list
        \object-list GeneratorNames
@@ -77527,7 +77585,9 @@ ElectricLoadCenter:Generators,
        \type object-list
        \object-list ScheduleNames
   N60; \field Generator 30 Rated Thermal to Electrical Power Ratio
-
+       \note Required field when generator is used by an ElectricLoadCenter:Distribution object with Generator Operation Scheme set to FollowThermal or FollowThermalLimitElectrical
+       \type real
+       
 ElectricLoadCenter:Inverter:Simple,
         \memo Electric power inverter to convert from direct current (DC) to alternating current
         \memo (AC) in an electric load center that contains photovoltaic modules. This input
@@ -78014,7 +78074,7 @@ ElectricLoadCenter:Distribution,
        \object-list TransformerNames
 
   A10, \field Storage Charge Operation Scheme
-       \note Select what type of power sources can be used to charge storage. 
+       \note Select what type of power sources can be used to charge storage.
        \type choice
        \key OnSiteGenerators
        \note OnSiteGenerators indicates that all power produced on-site is used to charge
@@ -78113,25 +78173,31 @@ ElectricLoadCenter:Distribution,
         \object-list ScheduleNames
    A3 , \field Power Conversion Efficiency Method
         \type choice
-        \key SimpleFixedEfficiency
-        \default SimpleFixedEfficiency
-        \note SimpleFixedEfficiency indicates power conversion losses are based on Simple Fixed Efficiency
-        \key FunctionOfPowerCurveOrTable
-        \note FunctionOfPowerCurveOrTable indicates power conversion losses are a function of normalized power
+        \key SimpleFixed
+        \default SimpleFixed
+        \note SimpleFixed indicates power conversion losses are based on Simple Fixed Efficiency
+        \key FunctionOfPower
+        \note FunctionOfPower indicates power conversion losses are a function of normalized power using a curve or table.
    N1 , \field Simple Fixed Efficiency
-        \minimum 0
+        \note Constant efficiency for conversion of AC to DC at all power levels.
+        \note Field is only used when Power Conversion Efficiency Method is set to SimpleFixed.
+        \type real
+        \minimum> 0.0
         \maximum 1.0
         \default 0.95
    N2,  \field Design Maximum Continuous Input Power
+        \note Required field when Power Conversion Efficiency Method is set to FunctionOfPower.
         \type real
         \units W
    A4 , \field Efficiency Function of Power Curve Name
-        \note curve describes efficiency as a function of power
-        \note the "x" input for curve or table is the ratio of current input power divided by design power in the previous field
+        \note Curve or table with a single independent variable that describes efficiency as a function of normalized power.
+        \note The "x" input for curve or table is the ratio of current input power divided by design power in the previous field
+        \note Required field when Power Conversion Efficiency Method is set to FunctionOfPower.
         \type object-list
         \object-list UniVariateCurves
         \object-list UniVariateTables
    N3 , \field Ancillary Power Consumed In Standby
+        \note Optional standby power consumed when converter is available but no power is being conditioned. 
         \type real
         \units W
    A5 , \field Zone Name
@@ -78141,7 +78207,7 @@ ElectricLoadCenter:Distribution,
         \object-list ZoneNames
    N4 ; \field Radiative Fraction
         \note fraction of zone heat gains treated as thermal radiation
-        \minimum 0
+        \minimum 0.0
         \maximum 1.0
         
 \group Water Systems

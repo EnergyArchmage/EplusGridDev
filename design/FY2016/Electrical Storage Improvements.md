@@ -19,7 +19,7 @@ Electric storage capabilities in EnergyPlus are too limited. The current capabil
 - Electric storage discharge controlled to follow a prescribed meter
 - Electric storage discharge controlled to regulate net export to the grid for time-of-day net metering or distribution grid voltage regulation.
 
-In addition, EnergyPlus lacks EMS actuators that are needed to allow users to write their own custom supervisory control programs using the EMS.
+In addition, EnergyPlus lacks EMS actuators needed to allow users to write their own custom supervisory control programs using the EMS.
 
 New capabilities to handle grid-connected storage and more versatile storage control capabilities are justified to allow users to model such systems and to compare the performance of thermal energy storage to electric power storage. 
 
@@ -54,7 +54,7 @@ A number of known issues will be addressed as part of a general rewrite of code 
 
 Introductory text will be added at the Group level to help explain how the various ElectricLoadCenter:* and Generator:* objects relate to one another to provide higher level guidance. 
 
-ElectricLoadCenter:Distribution object will be modified to add the following new input fields at the end of the object.  All of the new inputs will be setup so if they are omitted the legacy behavior, or at least intended behavior where there no issues, will be retained. 
+The ElectricLoadCenter:Distribution object will be modified to add the following new input fields at the end of the object.  All of the new inputs will be setup so if they are omitted the legacy behavior, or at least intended behavior where there no issues, will be retained. 
 
 #### Field: Storage Charge Operation Scheme
 This field is used to determine which power source is used to charge the electric storage device. There are four choices: OnSiteGenerators, OnSiteGeneratorsSurplus, ScheduledGridSupply, and OnSiteGeneratorSurplusPlusScheduledGridSupply. 
@@ -82,37 +82,67 @@ This field is the name of a schedule that is used to control the timing and magn
 #### Field: Storage Discharge Operation Scheme
 This field is used to determine how storage discharge is controlled.  There are five choices:  FacilityDemandLimit, TrackFacilityElectricDemand, TrackSchedule, TrackMeter, and ScheduledGridExport.
 
-- DemandLimit indicates that storage discharge control will limit facility power demand drawn from the utility service while accounting for any on-site generation.  The rate of discharge will depend on the current level of power consumed by the building and its systems, the power generated any on-site generation as well as demand limit and schedule in the next two fields. 
+- DemandLimit indicates that storage discharge control will limit facility power demand drawn from the utility service while accounting for any on-site generation.  The rate of discharge will depend on the current level of power consumed by the building and its systems, the power generated any on-site generation, and conversion losses as well as demand limit and schedule in the next two fields. This is intended to help control demand (kW) charges in the electric service tariff. 
 - TrackElectric indicates that storage discharge control will follow the facility power demand while accounting for any on-site generation.  This was the intended behavior prior to version 8.5 and is therefore the default. 
 - TrackSchedule indicates that the storage discharge control will follow the schedule named in the input field called Storage Discharge Track Schedule Name.  This scheme does not account for any on-site generation and provides direct control over storage draws without any adjustments for conversion losses.   
-- TrackMeter indicates that storage discharge control will follow an electric meter named in the field called Storage Discharge Track Meter Name, while accounting for any on-site generation.
-- ScheduledGridExport indicates that storage discharge control will export power to the utility service connection following the power level in the field called Maximum Storage Discharge Grid Export Power multiplied by the value in the schedule named in the field Storage Discharge Grid Export Fraction Schedule Name.
+- TrackMeter indicates that storage discharge control will follow an electric meter named in the field called Storage Discharge Track Meter Name, while accounting for any on-site generation and conversion losses.  
+- ScheduledGridExport indicates that storage discharge control will attempt to export power to the utility service connection following the power level in the field called Maximum Storage Discharge Grid Export Power multiplied by the value in the schedule named in the field Storage Discharge Grid Export Fraction Schedule Name.  This scheme accounts for any on-site generation and can be used to regulate surplus power exported to the grid.  For example, when used with intermittent on-site generation, such as wind or PV, surplus power can be exported to the grid in a smooth, well-controlled manner to aid voltage regulation on the local distribution grid.  
 
 #### Field: Storage Discharge Demand Limit
-This numeric field is the target utility service demand power limit, in Watts, used to control storage discharge when using the Storage Discharge Operation Scheme Facility called DemandLimit.  This field is required when using DemandLimit discharge operation scheme.  This value is the power as viewed from the grid.  Power conversion losses from any inverter and/or transformer located between the storage and the utility service connection are considered and the storage discharge will be adjusted higher to compensate. 
+This numeric field is the target utility service demand power limit, in Watts.  used to control storage discharge when using .  This field is only used, and is required, when the Storage Discharge Operation Scheme Facility is set to DemandLimit.  This value is the power as viewed from the grid.  Power conversion losses from any inverter and/or transformer located between the storage and the utility service connection are considered and the storage discharge will be adjusted higher to compensate. 
 
 #### Field: Storage Discharge Demand Limit Fraction Schedule Name
 This field is the name of a schedule that can be used to vary the target utility service demand power limit over time.  If omitted a schedule value of 1.0 is used.  Schedule values should be between 0.0 and 1.0.  The values in the schedule are multiplied by the power limit level in the previous field to set a target demand limit that is used to control storage discharge. 
 
 #### Field: Storage Discharge Track Schedule Name
-This field is the name of a schedule that can be used control the storage discharge rate.  The schedule values are in Watts.  This is the power viewed from the buss connected to the storage device and does not include any power conversion outside of the storage device.  This field is required when the Storage Discharge Operation Scheme is set to TrackSchedule.  This m
+This field is the name of a schedule that is used control the storage discharge.  The schedule values are in Watts.  This is the power viewed from the buss connected to the storage device and does not include any power conversion outside of the storage device.  This field is only used, and is required, when the Storage Discharge Operation Scheme is set to TrackSchedule.
 
 #### Field: Storage Discharge Track Meter Name
-This field is the name of an EnergyPlus electric meter that can be used to control the storage discharge rate. The power level from the meter is considered as AC and used to control the discharge.  The rate of discharge is determined by first using an on-site generation and then meeting the remaining load by drawing from storage.  When the storage is DC the discharge rate will be adjusted upward to account for inverter losses (but not transformer losses).   This field is required when the Storage Discharge Operation Scheme Type is set to TrackMeter.  
+This field is the name of an EnergyPlus electric meter that is used to control storage discharge. The power level from the meter is considered as AC and used to control the discharge.  The rate of discharge is determined by first using an on-site generation and then meeting the remaining load by drawing from storage.  When the storage is DC the discharge rate will be adjusted upward to account for inverter losses (but not transformer losses).   This field is only used, and is required, when the Storage Discharge Operation Scheme Type is set to TrackMeter.  
  
-  N4 , \field Maximum Storage Discharge Grid Export Power
-       \note Maximum rate that electric power can be fed to grid from storage discharge
-       \type real
-       \units W
+#### Field: Maximum Storage Discharge Grid Export Power
+This numeric field is the target net power exported to the utility service, in Watts.  This is maximum value and is modified by the values in the schedule named in the following field.  The target export power is used in the control of storage discharge along with the current on-site generation.  This value is the power as viewed from the grid. Power conversion losses from any inverter and/or transformer located between the storage and the utility service connection are considered and the storage discharge will be adjusted higher to compensate.  
+
        
-  A15; \field Storage Discharge Grid Export Fraction Schedule Name
-       \note controls timing and magnitude of discharging to grid
-       \note required 
+#### Field: Storage Discharge Grid Export Fraction Schedule Name
+This field is the name of a schedule that can be used to vary the power exported to the grid over time.  If omitted a schedule value of 1.0 is used.  Schedule values should be between 0.0 and 1.0.  The values in the schedule are multiplied by the Maximum Storage Discharge Grid Export Power in the previous field to set a target level for surplus power and is used to control storage discharge. 
 
 
-## Input Description ##
 
-insert text
+Grid-supplied charging of DC storage, that is those electric storage devices on a load center with buss type set to DirectCurrentWithInverterDCStorage, requires a rectifier or AC to DC converter.  This device might a bidirection inverter or a seperate converter.  A new object with the class name of ElectricLoadCenter:Storage:Converter is proposed to describe the performance of AC to DC conversion for grid interaction with on-site batteries.
+
+###  ElectricLoadCenter:Storage:Converter,
+This model is for converting AC to DC for grid-supplied charging of DC storage.  The model is only for power conversion and does not consider voltage. There are two method for determining the efficiency with which power is converted.  The efficiency is defined as the ratio of DC power output divided by AC power input.  If the name of a zone is entered the power conversion losses will be added to the zone as internal heat gains.
+
+#### Field: Name
+This field contains a unique name for the AC to DC converter.
+
+#### Field: Availability Schedule Name
+This field contains the name of a schedule that describes when the power converter is available. If power conversion is not available then electric power from the grid cannot be used to charge storage. Any non-zero value means the converter is available. If this field is blank, the schedule has a value of 1 for all time periods and the converter is always available. Standby power consumption is on when converter is available and off when the converter is not available. 
+
+#### Field: Power Conversion Efficiency Method
+This choice field is used to select which method is used to define the efficiency with which power is converted from AC to DC.  There are two options: SimpleFixedEfficiency or FunctionOfPower.
+- SimpleFixed indicates that power conversion efficiency is a constant with the value set in the next field. There is no need to size the converter and varying levels of power do not affect the efficiency. SimpleFixed is the default. 
+- FunctionOfPower indicates that the power conversion efficiency is a function of the level of power being converted. This method is intended to model the characteristic that converters tend to operate less efficiency when load well below their design size. The converter must be sized with a value in the Design Maximum Continuous Input Power and the functional relationship described in a performance curve or look-up table. 
+
+#### Field: Simple Fixed Efficiency
+This numeric field is used to set a constant efficiency for conversion of AC to DC at all power levels. This field is only used, and is required, when the Power Conversion Efficiency Method is set to SimpleFixed. The value must be greater than 0.0 and less than equal to 1.0.  The default is 0.95. 
+ 
+#### Field: Design Maximum Continuous Input Power
+This numeric field describes the size of the power converter in terms of its design input power level, in Watts.  This is the AC power going into the converter.  This field is only used, and is required, when the the Power Conversion Efficiency Method is set to FunctionOfPower.  This input serves as an upper limit for the AC power input and is used to normalize power for use in the performance curve or table.  The power being converted at any given time is divided by the value in this field.  
+
+#### Field: Efficiency Function of Power Curve Name
+This field is the name of a performance curve or table object that describes how efficiency varies as a function of normalized power.  The single independent "x" variable input for curve or table is the ratio of AC input power at a given time divided by design power in the previous field.  The result of the curve should be the power conversion efficiency for that normalized power so that DC power output is the product of efficiency times the AC power input.  Any of the single-variable performance curves or lookup tables can be used to describe performance. This field is only used, and is required, when the the Power Conversion Efficiency Method is set to FunctionOfPower. 
+
+#### Field: Ancillary Power Consumed In Standby
+This numeric field describes the ancillary power consumed by the converter when it is available but not converting power, in Watts.  This field is optional and can be used with any of the efficiency methods. 
+
+#### Field: Zone Name
+This field is the name of thermal zone where the converter is located.  If this field is omitted then the converter is considered outdoors.  The power lost during the conversion process is treated as heat gains and added the thermal zone named in this field.  The split between radiation and convection can be controlled in the next input field. 
+
+ #### Field: Radiative Fraction
+This numeric field is the fraction of zone heat gains that are handled as infrared thermal radiation.  This field is only used if a zone is named in the previous field.  The portion of zone gains that are not radiative are added to the zone as convection. If a zone is named and this field left blank or omitted then all the zone heat gains will be convective. 
+
 
 ## Outputs Description ##
 
