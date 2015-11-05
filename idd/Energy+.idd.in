@@ -78035,15 +78035,16 @@ ElectricLoadCenter:Distribution,
        \type real
        \default 0.0
   N4 , \field Maximum Storage Charge Grid Supply Power
-       \note Maximum rate that electric power can be taken from grid to charge storage
-       \note rate is modified by fractional values in the next field. 
+       \note Maximum rate that electric power can be taken from grid to charge storage. 
+       \note Storage charging adjusted downward for conversion losses.
+       \note Rate is modified by fractional values in the next field. 
        \note required field if Storage Charge Operation Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply
        \type real
        \units W
   A11, \field Storage Charge Grid Supply Power Fraction Schedule Name
        \note controls timing and magnitude of charging from grid
        \note required field if Storage Charge Operation Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply
-       \note schedule values should be fractions from 0.0 to 1.0, inclusive.
+       \note Schedule values should be fractions from 0.0 to 1.0, inclusive.
        \type object-list
        \object-list ScheduleNames
   A12, \field Storage Converter Object Name
@@ -78057,7 +78058,7 @@ ElectricLoadCenter:Distribution,
   A13, \field Storage Discharge Operation Scheme
        \note Select method to govern how storage discharge is controlled
        \type choice
-       \key FacilityDemandLimit
+       \key DemandLimit
        \note FacilityDemandLimit indicates that storage discharge control will limit facility power demand drawn from the utility service 
        \note while accounting for any on-site generation
        \key TrackFacilityElectricDemand
@@ -78072,23 +78073,24 @@ ElectricLoadCenter:Distribution,
        \note ScheduledGridExport indicates that storage discharge control will export power to the utility service connection following 
        \note the power level in the field called Maximum Storage Discharge Grid Export Power multiplied by the value in the schedule 
        \note named in the field Storage Discharge Grid Export Fraction Schedule Name. 
-  N5,  \field Storage Discharge Purchased Electric Demand Limit
-       \note Target utility service demand power for discharge control 
-       \note required field for FacilityDemandLimit discharge operation scheme
+  N5,  \field Storage Discharge Utility Demand Limit
+       \note Target utility service demand power for discharge control.  Storage draws are adjusted upwards for conversion losses. 
+       \note Required field for DemandLimit discharge operation scheme
        \type real
        \units W
-  A14, \field Storage Discharge Purchased Electric Demand Limit Fraction Schedule Name
-       \note Modifies the discharge demand limit over time.
+  A14, \field Storage Discharge Utility Demand Limit Fraction Schedule Name
+       \note Modifies the target utility service demand power over time.
+       \note Schedule values should be fractions from 0.0 to 1.0, inclusive.
        \note if omitted a schedule value of 1.0 is used. 
        \type object-list
        \object-list ScheduleNames
   A15, \field Storage Discharge Track Schedule Name
-       \note required when Storage Discharge Operation Scheme Type is set to TrackSchedule
-       \note schedule values in Watts
+       \note Required field when Storage Discharge Operation Scheme is set to TrackSchedule.
+       \note Schedule values in Watts.
        \type object-list
        \object-list ScheduleNames
   A16, \field Storage Discharge Track Meter Name
-       \note required when Generator Operation Scheme Type=TrackMeter
+       \note required when Discharge Operation Scheme Type is set to TrackMeter.
        \type external-list
        \external-list autoRDDmeter
   N6 , \field Maximum Storage Discharge Grid Export Power
@@ -78100,7 +78102,7 @@ ElectricLoadCenter:Distribution,
        \note required 
   
   ElectricLoadCenter:Storage:Converter,
-        \memo This model is for converting AC to DC for grid-connected DC storage
+        \memo This model is for converting AC to DC for grid-supplied charging of DC storage
         \min-fields 4
    A1 , \field Name
         \reference ConverterList
