@@ -1,15 +1,16 @@
-Electric Storage Controls 
+Electric Storage Improvements
 ================
 
-**B. Griffith, Energy Archmage Company, for DOE/NREL/GARD**
+**B. Griffith, Energy Archmage Company, for DOE/NREL/GARD **
 
  - November 9, 2015
  - 
- 
+
+ FY2016 subtask 4.2.1
 
 ## Justification for New Feature ##
 
-Electric storage capabilities in EnergyPlus are too limited. The current capabilities for storage were only intended for storing electrical power produced by on-site generators and the charge and discharge supervisory controls are hard-coded with no options.  The improvements planned will address the following list of applications for electric storage that EnergyPlus is not currently able to model:
+Electric storage capabilities in EnergyPlus are too limited. The current capabilities for storage were only intended for storing electrical power produced by on-site generators and the charge and discharge supervisory controls are hard-coded with no options.  New capabilities to handle grid-connected storage and more versatile storage control capabilities are justified to allow EnergyPlus users to model such systems and to compare the performance of thermal energy storage to electric power storage.  The improvements planned will address the following list of applications for electric storage that EnergyPlus is not currently able to model:
 
 - Electric storage charge power is taken from the grid with no on-site generation.  
 - Electric storage charge power combines grid-supplied electricity with on-site generation.
@@ -21,30 +22,36 @@ Electric storage capabilities in EnergyPlus are too limited. The current capabil
 
 In addition, EnergyPlus lacks EMS actuators needed to allow users to write their own custom supervisory control programs using the EMS.
 
-New capabilities to handle grid-connected storage and more versatile storage control capabilities are justified to allow users to model such systems and to compare the performance of thermal energy storage to electric power storage. 
+A number of inter-related github issues need to be addressed as part of project that is larger than individual bug fixes. 
+
 
 ## E-mail and  Conference Call Conclusions ##
 
-<insert text>
+- S. Frank of NREL confirmed need for AC-to-DC converter in 11/5/2015 email. 
 
 ## Overview ##
 
-The scope of intended applications for the ElectricLoadCenter in EnergyPlus will be expanded to include grid interactions in addition to expanding supervisory control options for electric storage. Controls over storage will be expanded while retaining legacy intended behavior as default. A collection of changes and bug fixes will be addressed to improve electrical storage.  EMS actuators will be added to facilitate custom control beyond what will be available with native methods. 
+The scope of intended applications for the ElectricLoadCenter in EnergyPlus will be expanded to include grid interactions in addition to expanding supervisory control options for electric storage. Controls over storage management will be expanded while retaining legacy intended behavior as default. A collection of changes and bug fixes will be addressed to improve electrical storage.  EMS actuators will be added to facilitate custom control beyond what will be available with native methods. 
 
 ## Approach ##
 
-The input object ElectricLoadCenter:Distribution will be expanded to add new input fields to improve control over charging and discharging of electrical storage. 
+The input object ElectricLoadCenter:Distribution will be expanded to add new input fields to improve control over charging and discharging of electrical storage and allow grid interaction. 
 
-New EMS actuators will be added to allow users to write their own control programs using EnergyPlus Runtime Language
+New EMS actuators will be added to allow users to write their own control programs using EnergyPlus Runtime Language.  
 
 A new component ElectricLoadCenter:Storage:Converter will be added to model power conversion losses when converting AC to DC for grid supplied power to charge DC storage device. 
 
-A number of known issues will be addressed as part of a general rewrite of code and documentation, including:
+A number of known issues will be addressed as part of a general rewrite of code and comprehensive edit of documentation, including:
 	1. Issue #3211 -- capacity limited to on-site generator charging.
 	2. issue #5004 -- battery won't charge at its max rate
 	3. Issue #4273 -- documentation of storage rules and behavior. 
 	4. issue #3531 -- documentation of tariffs with on-site production, storage etc. Change example files to use meters and tariffs as currently intended.
 	5. Issue #5299 -- Warn if thermal to electric power ratio not set for FollowThermal* generator operation schemes
+	6. Issue #5302, detect and warn if multiple load centers and one battery (appears to work with simple storage).
+	7. Issue #5301, fatal kinetic battery with no information, was hard crash in  v8.1. 
+	8. issue #4921, false object not found error, units in kinetic battery differ from simple storage.
+	9. Issue #4639, missing ElectricLoadCenter:Distribution object should lead to error message.
+	10. Issue #4113, RDD and documentation don't match for whole-building electric reports 	
 
 ## Testing/Validation/Data Sources ##
 
@@ -109,10 +116,10 @@ This field is the name of a schedule that can be used to vary the power exported
 
 
 
-Grid-supplied charging of DC storage, that is those electric storage devices on a load center with buss type set to DirectCurrentWithInverterDCStorage, requires a rectifier or AC to DC converter.  This device might a bidirection inverter or a seperate converter.  A new object with the class name of ElectricLoadCenter:Storage:Converter is proposed to describe the performance of AC to DC conversion for grid interaction with on-site batteries.
+A new object with class name of ElectricLoadCenter:Storage:Converter is proposed to describe the performance of AC to DC conversion for grid interaction with on-site batteries. Grid-supplied charging of DC storage (storage devices on a load center with buss type set to DirectCurrentWithInverterDCStorage) requires a rectifier or AC to DC converter.  This device might the backward operating mode for a bidirectional inverter but regardless will be modeled as a separate converter component.    
 
-###  ElectricLoadCenter:Storage:Converter,
-This model is for converting AC to DC for grid-supplied charging of DC storage.  The model is only for power conversion and does not consider voltage. There are two method for determining the efficiency with which power is converted.  The efficiency is defined as the ratio of DC power output divided by AC power input.  If the name of a zone is entered the power conversion losses will be added to the zone as internal heat gains.
+###  ElectricLoadCenter:Storage:Converter
+This model is for converting AC to DC for grid-supplied charging of DC storage.  The model is only for power conversion and does not consider voltage. There are two methods available for determining the efficiency with which power is converted.  The efficiency is defined as the ratio of DC power output divided by AC power input.  If the name of a zone is entered the power conversion losses will be added to the zone as internal heat gains.
 
 #### Field: Name
 This field contains a unique name for the AC to DC converter.
@@ -121,21 +128,21 @@ This field contains a unique name for the AC to DC converter.
 This field contains the name of a schedule that describes when the power converter is available. If power conversion is not available then electric power from the grid cannot be used to charge storage. Any non-zero value means the converter is available. If this field is blank, the schedule has a value of 1 for all time periods and the converter is always available. Standby power consumption is on when converter is available and off when the converter is not available. 
 
 #### Field: Power Conversion Efficiency Method
-This choice field is used to select which method is used to define the efficiency with which power is converted from AC to DC.  There are two options: SimpleFixedEfficiency or FunctionOfPower.
-- SimpleFixed indicates that power conversion efficiency is a constant with the value set in the next field. There is no need to size the converter and varying levels of power do not affect the efficiency. SimpleFixed is the default. 
-- FunctionOfPower indicates that the power conversion efficiency is a function of the level of power being converted. This method is intended to model the characteristic that converters tend to operate less efficiency when load well below their design size. The converter must be sized with a value in the Design Maximum Continuous Input Power and the functional relationship described in a performance curve or look-up table. 
+This choice field is used to select which method is used to define the efficiency with which power is converted from AC to DC.  There are two options: SimpleFixed or FunctionOfPower.
+- SimpleFixed indicates that power conversion efficiency is a constant with the value set in the next field. There is no need to size the converter (with a value in the field called Design Maximum Continuous Input Power) and varying levels of power do not affect the efficiency. SimpleFixed is the default. 
+- FunctionOfPower indicates that the power conversion efficiency is a function of the level of power being converted. This method is intended to model the characteristic that converters tend to operate less efficiently when loaded well below their design size. The converter must be sized with a value in the Design Maximum Continuous Input Power and the functional relationship described in a performance curve or look-up table. 
 
 #### Field: Simple Fixed Efficiency
 This numeric field is used to set a constant efficiency for conversion of AC to DC at all power levels. This field is only used, and is required, when the Power Conversion Efficiency Method is set to SimpleFixed. The value must be greater than 0.0 and less than equal to 1.0.  The default is 0.95. 
  
 #### Field: Design Maximum Continuous Input Power
-This numeric field describes the size of the power converter in terms of its design input power level, in Watts.  This is the AC power going into the converter.  This field is only used, and is required, when the the Power Conversion Efficiency Method is set to FunctionOfPower.  This input serves as an upper limit for the AC power input and is used to normalize power for use in the performance curve or table.  The power being converted at any given time is divided by the value in this field.  
+This numeric field describes the size of the power converter in terms of its design input power level, in Watts.  This is the AC power going into the converter.  This field is only used, and is required, when the the Power Conversion Efficiency Method is set to FunctionOfPower.  This input serves as an upper limit for the AC power input and is used to normalize power for use in the performance curve or table.  The AC power being converted at any given time is divided by the value in this field.  
 
 #### Field: Efficiency Function of Power Curve Name
-This field is the name of a performance curve or table object that describes how efficiency varies as a function of normalized power.  The single independent "x" variable input for curve or table is the ratio of AC input power at a given time divided by design power in the previous field.  The result of the curve should be the power conversion efficiency for that normalized power so that DC power output is the product of efficiency times the AC power input.  Any of the single-variable performance curves or lookup tables can be used to describe performance. This field is only used, and is required, when the the Power Conversion Efficiency Method is set to FunctionOfPower. 
+This field is the name of a performance curve or table object that describes how efficiency varies as a function of normalized power.  The single independent "x" variable input for the curve or table is the ratio of AC input power at a given time divided by design power in the previous field.  The result of the curve should be the power conversion efficiency for that normalized power so that DC power output is the product of efficiency multiplied by the AC power input.  Any of the single-variable performance curves or lookup table objects can be used to describe performance. This field is only used, and is required, when the the Power Conversion Efficiency Method is set to FunctionOfPower. 
 
 #### Field: Ancillary Power Consumed In Standby
-This numeric field describes the ancillary power consumed by the converter when it is available but not converting power, in Watts.  This field is optional and can be used with any of the efficiency methods. 
+This numeric field describes the ancillary power consumed by the converter when it is available but not converting power, in Watts.  This field is optional and can be used with any of the efficiency methods. If this converter is really on mode of a bidirectional inverter, take care not to double count the ancillary consumption by including them in both this component and the inverter component. 
 
 #### Field: Zone Name
 This field is the name of thermal zone where the converter is located.  If this field is omitted then the converter is considered outdoors.  The power lost during the conversion process is treated as heat gains and added the thermal zone named in this field.  The split between radiation and convection can be controlled in the next input field. 
@@ -146,19 +153,33 @@ This numeric field is the fraction of zone heat gains that are handled as infrar
 
 ## Outputs Description ##
 
-insert text
+A set of output variables will be added for the new AC-to-DC converter.
+
+
+## Implementation ##
+Source code changes will be made to the existing files ManageElectricPower.hh (1,108 lines) and ManageElectricPower.cc (3,770 lines).  
+
+### OO Design ###
+A good faith effort will be made to refactor parts of ManageElectricPower to be Object Orented. The new component model for ElectricLoadCenter:Storage:Converter will be implemented using OO techniques. The large manager routine ManageElectricLoadCenters() will be broken up into a number of member functions belonging to a new object.  
+
+However, existing component models for transformer, inverters, and storage will not be refactored.  
+
+### Data Structures ###
+ManageElectricPower.hh contains the data structures for management, supervisory control, and aggregated reporting of on-site generation , storage, and power conversion (ElecLoadCenter, WholeBldgElectSummary).  It also contains the data structures for component models for transformer, inverter, and storage devices.  The intent is to refactor the data structure ElecLoadCenter into a new object as part of OO refactoring. 
 
 ## Engineering Reference ##
 
-insert text
+<insert text>
+
+EMS Application Guide updated for new actuators.
 
 ## Example File and Transition Changes ##
 
-insert text
+<insert text>
 
 ## References ##
 
-insert text
+<insert text>
 
 
 
