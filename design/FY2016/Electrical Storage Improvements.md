@@ -41,7 +41,7 @@ New EMS actuators will be added to allow users to write their own control progra
 
 A new component ElectricLoadCenter:Storage:Converter will be added to model power conversion losses when converting AC to DC for grid supplied power to charge DC storage device. 
 
-A number of known issues will be addressed as part of a general rewrite of code and comprehensive edit of documentation, including:
+A number of known issues related to storage will be addressed as part of a general rewrite of code and comprehensive edit of documentation, including:
 	1. Issue #3211 -- capacity limited to on-site generator charging.
 	2. issue #5004 -- battery won't charge at its max rate
 	3. Issue #4273 -- documentation of storage rules and behavior. 
@@ -51,7 +51,8 @@ A number of known issues will be addressed as part of a general rewrite of code 
 	7. Issue #5301, fatal kinetic battery with no information, was hard crash in  v8.1. 
 	8. issue #4921, false object not found error, units in kinetic battery differ from simple storage.
 	9. Issue #4639, missing ElectricLoadCenter:Distribution object should lead to error message.
-	10. Issue #4113, RDD and documentation don't match for whole-building electric reports 	
+	10. Issue #4113, RDD and documentation don't match for whole-building electric reports
+	11. Issue #5303, Sign reversed in kinetic battery model Electric Storage Production Decrement Energy 	
 
 ## Testing/Validation/Data Sources ##
 
