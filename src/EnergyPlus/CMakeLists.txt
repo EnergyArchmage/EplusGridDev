@@ -198,6 +198,7 @@ SET( SRC
   EconomicTariff.hh
   ElectricBaseboardRadiator.cc
   ElectricBaseboardRadiator.hh
+  ElectricPowerServiceManager.hh
   EnergyPlus.hh
   EvaporativeCoolers.cc
   EvaporativeCoolers.hh
