@@ -3116,8 +3116,8 @@ namespace ManageElectricPower {
 			//output1
 			if ( TotalSOC > q0 ) {
 				ElecStorage( ElecStorNum ).StorageMode = 2;
-				ElecStorage( ElecStorNum ).StoredPower = Volt * I0 * Numbattery;
-				ElecStorage( ElecStorNum ).StoredEnergy = Volt * I0 * Numbattery * TimeStepSys * SecInHour;
+				ElecStorage( ElecStorNum ).StoredPower = -1.0 * Volt * I0 * Numbattery;
+				ElecStorage( ElecStorNum ).StoredEnergy = -1.0 * Volt * I0 * Numbattery * TimeStepSys * SecInHour;
 				ElecStorage( ElecStorNum ).DecrementedEnergyStored = -1.0 * ElecStorage( ElecStorNum ).StoredEnergy;
 				ElecStorage( ElecStorNum ).DrawnPower = 0.0;
 				ElecStorage( ElecStorNum ).DrawnEnergy = 0.0;
