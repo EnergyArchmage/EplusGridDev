@@ -447,7 +447,8 @@ namespace HVACManager {
 			ManageWater();
 			// update electricity data for net, purchased, sold etc.
 			DummyLogical = false;
-			ManageElectricLoadCenters( false, DummyLogical, true );
+			DataHVACGlobals::facilityElectricServiceObj.manageElectricLoadCenters( false, DummyLogical, true );
+
 			// Update the plant and condenser loop capacitance model temperature history.
 			UpdateNodeThermalHistory();
 
@@ -734,7 +735,8 @@ namespace HVACManager {
 			ManageZoneEquipment( FirstHVACIteration, SimZoneEquipmentFlag, SimAirLoopsFlag );
 			// need to call non zone equipment so water use zone gains can be included in sizing calcs
 			ManageNonZoneEquipment( FirstHVACIteration, SimNonZoneEquipmentFlag );
-			ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuitsFlag, false );
+			DataHVACGlobals::facilityElectricServiceObj.manageElectricLoadCenters( FirstHVACIteration, SimElecCircuitsFlag, false );
+			//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuitsFlag, false );
 			return;
 		}
 
@@ -1539,13 +1541,14 @@ namespace HVACManager {
 			ManageZoneEquipment( FirstHVACIteration, SimZoneEquipment, SimAirLoops );
 			SimZoneEquipment = true; //needs to be simulated at least twice for flow resolution to propagate to this routine
 			ManageNonZoneEquipment( FirstHVACIteration, SimNonZoneEquipment );
-
-			ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
+			DataHVACGlobals::facilityElectricServiceObj.manageElectricLoadCenters( FirstHVACIteration, SimElecCircuitsFlag, false );
+			//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
 
 			ManagePlantLoops( FirstHVACIteration, SimAirLoops, SimZoneEquipment, SimNonZoneEquipment, SimPlantLoops, SimElecCircuits );
 
 			AskForPlantCheckOnAbort = true; // need to make a first pass through plant calcs before this check make sense
-			ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
+			DataHVACGlobals::facilityElectricServiceObj.manageElectricLoadCenters( FirstHVACIteration, SimElecCircuitsFlag, false );
+			//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
 		} else {
 			FlowResolutionNeeded = false;
 			while ( ( SimAirLoops || SimZoneEquipment ) && ( IterAir <= MaxAir ) ) {
@@ -1603,7 +1606,8 @@ namespace HVACManager {
 			}
 
 			if ( SimElecCircuits ) {
-				ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
+				DataHVACGlobals::facilityElectricServiceObj.manageElectricLoadCenters( FirstHVACIteration, SimElecCircuitsFlag, false );
+				//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
 			}
 
 			if ( ! SimPlantLoops ) {
@@ -1619,7 +1623,8 @@ namespace HVACManager {
 			}
 
 			if ( SimElecCircuits ) {
-				ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
+				DataHVACGlobals::facilityElectricServiceObj.manageElectricLoadCenters( FirstHVACIteration, SimElecCircuitsFlag, false );
+				//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
 			}
 
 		}

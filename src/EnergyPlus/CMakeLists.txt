@@ -199,6 +199,7 @@ SET( SRC
   ElectricBaseboardRadiator.cc
   ElectricBaseboardRadiator.hh
   ElectricPowerServiceManager.hh
+  ElectricPowerServiceManager.cc
   EnergyPlus.hh
   EvaporativeCoolers.cc
   EvaporativeCoolers.hh

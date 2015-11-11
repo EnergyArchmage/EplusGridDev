@@ -41,12 +41,13 @@ private: // Creation
 
 public: // Methods
 
-		void
-		manageElectricLoadCenters(
-			bool const FirstHVACIteration,
-			bool & SimElecCircuits, // simulation convergence flag
-			bool const UpdateMetersOnly // if true then don't resimulate generators, just update meters.
-		);
+
+	void
+	manageElectricLoadCenters(
+		bool const FirstHVACIteration,
+		bool & SimElecCircuits, // simulation convergence flag
+		bool const UpdateMetersOnly // if true then don't resimulate generators, just update meters.
+	);
 
 
 private: //Methods
