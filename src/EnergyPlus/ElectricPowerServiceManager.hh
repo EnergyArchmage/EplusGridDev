@@ -2,10 +2,11 @@
 #define ElectricPowerServiceManager_hh_INCLUDED
 
 // C++ Headers
+#include <string>
 #include <vector>
 
 // ObjexxFCL Headers
-#include <ObjexxFCL/Array1.hh>
+//#include <ObjexxFCL/Array1.hh>
 
 
 #include <EnergyPlus.hh>
@@ -15,229 +16,6 @@ namespace EnergyPlus {
 
 namespace ElectricPowerService {
 
-class ElectricPowerServiceManager
-{
-
-private: // Creation
-
-	// Default Constructor
-	ElectricPowerServiceManager() :
-			name( "Whole Building" ),
-			electricityProd( 0.0 ),
-			electProdRate( 0.0 ),
-			electricityPurch( 0.0 ),
-			electPurchRate( 0.0 ),
-			electSurplusRate( 0.0 ),
-			electricitySurplus( 0.0 ),
-			electricityNetRate( 0.0 ),
-			electricityNet( 0.0 ),
-			totalBldgElecDemand( 0.0 ),
-			totalHVACElecDemand( 0.0 ),
-			totalElectricDemand( 0.0 ),
-			elecProducedPVRate( 0.0 ),
-			elecProducedWTRate( 0.0 ),
-			elecProducedStorageRate( 0.0 )
-		{}
-
-public: // Methods
-
-
-	void
-	manageElectricLoadCenters(
-		bool const FirstHVACIteration,
-		bool & SimElecCircuits, // simulation convergence flag
-		bool const UpdateMetersOnly // if true then don't resimulate generators, just update meters.
-	);
-
-
-private: //Methods
-	void
-	getPowerManagerInput();
-
-	void
-	updateWholeBuildingRecords();
-
-
-private: // data
-		std::string name;
-		std::vector < ElectPowerLoadCenter > ElecLoadCenter;
-		Real64 electricityProd; // Current Electric Produced from Equipment (J)
-		Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
-		Real64 electricityPurch; // Current Purchased Electric (J)
-		Real64 electPurchRate; // Current Electric Purhcased Rate (W)
-		Real64 electSurplusRate; // Current excess power (W)
-		Real64 electricitySurplus; // Current excess energy (J)
-		Real64 electricityNetRate; // Net elect rate, + is Purchased, - is Surplus (W)
-		Real64 electricityNet; // Net energy, + is Purchased, - is Surplus (J)
-		Real64 totalBldgElecDemand; // Current Total Building Electric Demand (W)
-		Real64 totalHVACElecDemand; // Current Total HVAC Electric Demand (W)
-		Real64 totalElectricDemand; // Current Total Electric Demand (W)
-		Real64 elecProducedPVRate; // Current Rate of PV Produced from the Arrays (W)
-		Real64 elecProducedWTRate; // Current Rate of Wind Turbine Produced (W)
-		Real64 elecProducedStorageRate; // Current Rate of power to(-)/from(+) storage 
-
-};
-
-
-class ElectPowerLoadCenter
-{
-
-private: // Creation
-	// Default Constructor
-	ElectPowerLoadCenter() :
-		genOperationScheme( 0 ),
-		demandMeterPtr( 0 ),
-		numGenerators( 0 ),
-		demandLimit( 0.0 ),
-		trackSchedPtr( 0 ),
-		bussType( 0 ),
-		inverterPresent( false ),
-		inverterModelNum( 0 ),
-		dCElectricityProd( 0.0 ),
-		dCElectProdRate( 0.0 ),
-		dCpowerConditionLosses( 0.0 ),
-		storagePresent( false ),
-		storageModelNum( 0 ),
-		transformerPresent( false ),
-		transformerModelNum( 0 ),
-		electricityProd( 0.0 ),
-		electProdRate( 0.0 ),
-		thermalProd( 0.0 ),
-		thermalProdRate( 0.0 ),
-		totalPowerRequest( 0.0 ),
-		totalThermalPowerRequest( 0.0 ),
-		electDemand( 0.0 )
-	{}
-
-
-
-public: // Methods
-
-	ElectPowerLoadCenter
-	electricLoadCenterFactory(
-		std::string objectName
-	);
-
-private: //Methods
-
-	void
-	generatorPowerOutput(
-		int const LoadCenterNum, // Load Center number counter
-		int const GenNum, // Generator number counter
-		bool const FirstHVACIteration, // Unused 2010 JANUARY
-		Real64 & ElectricPowerOutput, // Actual generator electric power output
-		Real64 & ThermalPowerOutput // Actual generator thermal power output
-	);
-
-	void
-	calcLoadCenterThermalLoad(
-		bool const FirstHVACIteration, // unused1208
-		int const LoadCenterNum, // Load Center number counter
-		Real64 & ThermalLoad // heat rate called for from cogenerator(watts)
-	);
-
-	void
-	manageElectCenterStorageInteractions(
-		int const LoadCenterNum, // load center number, index for structure
-		Real64 & StorageDrawnPower, // Electric Power Draw Rate from storage units
-		Real64 & StorageStoredPower // Electric Power Store Rate from storage units
-	);
-
-	void
-	manageTransformers();
-
-	void
-	manageInverter( int const LoadCenterNum ); // Load Center number counter
-
-	void
-	verifyCustomMetersElecPowerMgr();
-
-private: // data
-	std::string name; // user identifier
-	std::string generatorList; // List name of available generators
-	int genOperationScheme; // Name of Operation Scheme
-	std::string demandMeterName; // Name of Demand Energy Meter for "on demand" operation
-	int demandMeterPtr; // "pointer" to Meter for electrical Demand to meet
-	std::string generationMeterName; // Name of Generated Energy Meter for "on demand" operation
-	int numGenerators; // Number of Generators
-	std::vector < GeneratorController > elecGenCntrlObj; // generator controller objects
-	Real64 demandLimit; // Demand Limit in Watts(W) which the generator will operate above
-	int trackSchedPtr; // "pointer" to schedule for electrical demand to meet.
-	int bussType; // is this load center powered by AC or DC generators
-	bool inverterPresent;
-	std::string inverterName; // hold name for verificaton and error messages
-	int inverterModelNum; // simulation model parameter type
-	Real64 dCElectricityProd; // Current DC Elect produced (J) (if buss type DCbussInverter)
-	Real64 dCElectProdRate; // Current DC Elect power produced (W) (if buss type DCbussInverter)
-	Real64 dCpowerConditionLosses; // current DC to AC inverter losses (W) (if DCbussInverter)
-	bool storagePresent;
-	std::string storageName; // hold name for verificaton and error messages
-	int storageModelNum; // simulation model parameter type
-	bool transformerPresent;
-	std::string transformerName; // hold name for verificaton and error messages
-	int transformerModelNum; // simulation model parameter type
-	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
-	Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
-	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
-	Real64 thermalProdRate; // Current Thermal energy Production Rate from Equipment (W)
-	Real64 totalPowerRequest; // Total electric power request from the load center (W)
-	Real64 totalThermalPowerRequest; // Total thermal power request from the load center (W)
-	Real64 electDemand; // Current electric power demand on the load center (W)
-
-};
-
-class GeneratorController
-{
-private: // Creation
-	// Default Constructor
-	GeneratorController() :
-		compType_Num( 0 ),
-		generatorIndex( 0 ),
-		maxPowerOut( 0.0 ),
-		availSchedPtr( 0 ),
-		powerRequestThisTimestep( 0.0 ),
-		onThisTimestep( false ),
-		eMSPowerRequest( 0.0 ),
-		eMSRequestOn( false ),
-		plantInfoFound( false ),
-		cogenLocation( PlantLocation( 0, 0, 0, 0 ) ),
-		nominalThermElectRatio( 0.0 ),
-		dCElectricityProd( 0.0 ),
-		dCElectProdRate( 0.0 ),
-		electricityProd( 0.0 ),
-		electProdRate( 0.0 ),
-		thermalProd( 0.0 ),
-		thermalProdRate( 0.0 )
-	{}
-
-public: // Methods
-
-private: //Methods
-
-
-private: // data
-	std::string name; // user identifier
-	std::string typeOf; // equipment type
-	int compType_Num; // Numeric designator for CompType (TypeOf)
-	int generatorIndex;
-	Real64 maxPowerOut; // Maximum Power Output (W)
-	std::string availSched; // Operation Schedule.
-	int availSchedPtr; // pointer to operation schedule
-	Real64 powerRequestThisTimestep; // Current Demand on Equipment (W)
-	bool onThisTimestep; // Indicator whether Generator on
-	Real64 eMSPowerRequest; // EMS actuator for current demand on equipment (W)
-	bool eMSRequestOn; // EMS actuating On if true.
-	bool plantInfoFound;
-	PlantLocation cogenLocation;
-	Real64 nominalThermElectRatio; // Cogen: nominal ratio of thermal to elect production
-	//results of component models for load center reporting
-	Real64 dCElectricityProd; // Current DC Electric Produced from Equipment (J)
-	Real64 dCElectProdRate; // Current DC Electric Production Rate from Equipment (W)
-	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
-	Real64 electProdRate; // Current AC Electric Production Rate from Equipment (W)
-	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
-	Real64 thermalProdRate; // Current Thermal energy Production Rate from Equipment (W)
-}; //GeneratorController
 
 class DCtoACInverter
 {
@@ -249,6 +27,9 @@ private: // Creation
 			heatLossesDestination( 0 ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
+			nightTareLossPower( 0.0 ),
+			nominalVoltage( 0.0 ),
+			nomVoltEfficiencyARR( 6, 0.0 ),
 			curveNum( 0 ),
 			ratedPower( 0.0 ),
 			minPower( 0.0 ),
@@ -268,11 +49,21 @@ private: // Creation
 			ancillACuseRate( 0.0 ),
 			ancillACuseEnergy( 0.0 )
 		{}
+
 public: // Methods
+
+	DCtoACInverter
+	dCtoACInverterFactory(
+		std::string const objectName
+	);
+
+	void
+	manageInverter( int const LoadCenterNum ); // Load Center number counter
 
 private: //Methods
 	void
-	FigureInverterZoneGains();
+	figureInverterZoneGains();
+
 private: // data
 		std::string name; // user identifier
 		int modelType; // type of inverter model used
@@ -280,7 +71,9 @@ private: // data
 		int heatLossesDestination;
 		int zoneNum; // destination zone for heat losses from inverter.
 		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
-		CECInverterLookUpTableData luTable;
+		Real64 nightTareLossPower; // CEC lookup table model
+		Real64 nominalVoltage; // CEC lookup table model
+		std::vector < Real64 > nomVoltEfficiencyARR; // eff at 10, 20, 30, 50, 75, & 100% CEC lookup table model
 		int curveNum; // curve index for eff as func of power
 		Real64 ratedPower; // rated, max continuous power output level for inverter
 		Real64 minPower;
@@ -303,22 +96,6 @@ private: // data
 
 }; //DCtoACInverter
 
-
-class CECInverterLookUpTableData
-{
-private: // Creation
-	// Default Constructor
-		CECInverterLookUpTableData() :
-			nightTareLossPower( 0.0 ),
-			nominalVoltage( 0.0 ),
-			nomVoltEfficiencyARR( 6, 0.0 )
-		{}
-
-public: //data
-		Real64 nightTareLossPower;
-		Real64 nominalVoltage;
-		std::vector < Real64 > nomVoltEfficiencyARR; // eff at 10, 20, 30, 50, 75, & 100% power and Nominal voltage
-}; //CECInverterLookUpTableData
 
 
 class ElectricStorage
@@ -389,10 +166,60 @@ private: // Creation
 			batteryDamage( 0.0 )
 		{}
 
+public: //methods
+	ElectricStorage
+	electricStorageFactory(
+		std::string const objectName
+		// need object type
+	);
+
+	void
+	manageElectCenterStorageInteractions(
+		int const LoadCenterNum, // load center number, index for structure
+		Real64 & StorageDrawnPower, // Electric Power Draw Rate from storage units
+		Real64 & StorageStoredPower // Electric Power Store Rate from storage units
+	);
 
 private: //methods
 	void
 	FigureElectricalStorageZoneGains();
+
+	bool
+	determineCurrentForBatteryDischarge(
+		Real64& curI0,
+		Real64& curT0,
+		Real64& curVolt,
+		Real64 const Pw,
+		Real64 const q0,
+		int const CurveNum,
+		Real64 const k,
+		Real64 const c,
+		Real64 const qmax,
+		Real64 const E0c,
+		Real64 const InternalR
+	);
+
+	void
+	rainflow(
+		int const numbin, // numbin = constant value
+		Real64 const input, // input = input value from other object (battery model)
+		std::vector < Real64 > B1, // stores values of points, calculated here - stored for next timestep
+		std::vector < Real64 > X, // stores values of two data point difference, calculated here - stored for next timestep
+		int & count, // calculated here - stored for next timestep in main loop
+		std::vector < Real64 > Nmb, // calculated here - stored for next timestep in main loop
+		std::vector < Real64 > OneNmb, // calculated here - stored for next timestep in main loop
+		int const dim // end dimension of array
+	);
+
+
+	void
+	shift(
+		std::vector < Real64 > A,
+		int const m,
+		int const n,
+		std::vector < Real64 > B,
+		int const dim // end dimension of arrays
+	);
 
 public: //data
 
@@ -512,48 +339,22 @@ private: // Creation
 		{}
 
 public: //methods
+
+	ElectricTransformer
+	electricTransformerFactory(
+		std::string const objectName
+	);
+
 	void
-	ManageTransformers();
+	manageTransformers();
 
 private: //methods
-	bool
-	determineCurrentForBatteryDischarge(
-		Real64& curI0,
-		Real64& curT0,
-		Real64& curVolt,
-		Real64 const Pw,
-		Real64 const q0,
-		int const CurveNum,
-		Real64 const k,
-		Real64 const c,
-		Real64 const qmax,
-		Real64 const E0c,
-		Real64 const InternalR
-	);
 
 	void
-	FigureTransformerZoneGains();
+	figureTransformerZoneGains();
 
-	void
-	Rainflow(
-		int const numbin, // numbin = constant value
-		Real64 const input, // input = input value from other object (battery model)
-		Array1A< Real64 > B1, // stores values of points, calculated here - stored for next timestep
-		Array1A< Real64 > X, // stores values of two data point difference, calculated here - stored for next timestep
-		int & count, // calculated here - stored for next timestep in main loop
-		Array1A< Real64 > Nmb, // calculated here - stored for next timestep in main loop
-		Array1A< Real64 > OneNmb, // calculated here - stored for next timestep in main loop
-		int const dim // end dimension of array
-	);
 
-	void
-	shift(
-		Array1A< Real64 > A,
-		int const m,
-		int const n,
-		Array1A< Real64 > B,
-		int const dim // end dimension of arrays
-	);
+
 
 private: //data
 		std::string name; // user identifier
@@ -605,6 +406,249 @@ private: //data
 
 
 }; //ElectricTransformer
+
+class GeneratorController
+{
+private: // Creation
+	// Default Constructor
+	GeneratorController() :
+		compType_Num( 0 ),
+		generatorIndex( 0 ),
+		maxPowerOut( 0.0 ),
+		availSchedPtr( 0 ),
+		powerRequestThisTimestep( 0.0 ),
+		onThisTimestep( false ),
+		eMSPowerRequest( 0.0 ),
+		eMSRequestOn( false ),
+		plantInfoFound( false ),
+		cogenLocation( PlantLocation( 0, 0, 0, 0 ) ),
+		nominalThermElectRatio( 0.0 ),
+		dCElectricityProd( 0.0 ),
+		dCElectProdRate( 0.0 ),
+		electricityProd( 0.0 ),
+		electProdRate( 0.0 ),
+		thermalProd( 0.0 ),
+		thermalProdRate( 0.0 )
+	{}
+
+public: // Methods
+
+	GeneratorController
+	generatorControllerFactory(
+		std::string const objectName
+	);
+
+	void
+	simGeneratorGetPowerOutput(
+		int const loadCenterNum, // Load Center number counter
+		int const genNum, // Generator number counter
+		bool const firstHVACIteration, // Unused 2010 JANUARY
+		Real64 & electricPowerOutput, // Actual generator electric power output
+		Real64 & thermalPowerOutput // Actual generator thermal power output
+	);
+
+private: //Methods
+
+
+private: // data
+	std::string name; // user identifier
+	std::string typeOf; // equipment type
+	int compType_Num; // Numeric designator for CompType (TypeOf)
+	int generatorIndex;
+	Real64 maxPowerOut; // Maximum Power Output (W)
+	std::string availSched; // Operation Schedule.
+	int availSchedPtr; // pointer to operation schedule
+	Real64 powerRequestThisTimestep; // Current Demand on Equipment (W)
+	bool onThisTimestep; // Indicator whether Generator on
+	Real64 eMSPowerRequest; // EMS actuator for current demand on equipment (W)
+	bool eMSRequestOn; // EMS actuating On if true.
+	bool plantInfoFound;
+	PlantLocation cogenLocation;
+	Real64 nominalThermElectRatio; // Cogen: nominal ratio of thermal to elect production
+	//results of component models for load center reporting
+	Real64 dCElectricityProd; // Current DC Electric Produced from Equipment (J)
+	Real64 dCElectProdRate; // Current DC Electric Production Rate from Equipment (W)
+	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
+	Real64 electProdRate; // Current AC Electric Production Rate from Equipment (W)
+	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
+	Real64 thermalProdRate; // Current Thermal energy Production Rate from Equipment (W)
+}; //class GeneratorController
+
+class ElectPowerLoadCenter
+{
+
+private: // Creation
+	// Default Constructor
+	ElectPowerLoadCenter() :
+		genOperationScheme( 0 ),
+		demandMeterPtr( 0 ),
+		numGenerators( 0 ),
+		demandLimit( 0.0 ),
+		trackSchedPtr( 0 ),
+		bussType( 0 ),
+		inverterPresent( false ),
+		inverterModelNum( 0 ),
+		dCElectricityProd( 0.0 ),
+		dCElectProdRate( 0.0 ),
+		dCpowerConditionLosses( 0.0 ),
+		storagePresent( false ),
+		storageModelNum( 0 ),
+		transformerPresent( false ),
+		transformerModelNum( 0 ),
+		electricityProd( 0.0 ),
+		electProdRate( 0.0 ),
+		thermalProd( 0.0 ),
+		thermalProdRate( 0.0 ),
+		totalPowerRequest( 0.0 ),
+		totalThermalPowerRequest( 0.0 ),
+		electDemand( 0.0 )
+	{}
+
+
+
+public: // Methods
+
+	ElectPowerLoadCenter
+	electricLoadCenterFactory(
+		std::string const objectName
+	);
+
+private: //Methods
+
+
+
+	void
+	calcLoadCenterThermalLoad(
+		bool const firstHVACIteration, // unused1208
+		int const loadCenterNum, // Load Center number counter
+		Real64 & thermalLoad // heat rate called for from cogenerator(watts)
+	);
+
+	void
+	ElectPowerLoadCenter::verifyCustomMetersElecPowerMgr();
+
+private: // data
+	std::string name; // user identifier
+	std::string generatorList; // List name of available generators
+	int genOperationScheme; // Name of Operation Scheme
+	std::string demandMeterName; // Name of Demand Energy Meter for "on demand" operation
+	int demandMeterPtr; // "pointer" to Meter for electrical Demand to meet
+	std::string generationMeterName; // Name of Generated Energy Meter for "on demand" operation
+	int numGenerators; // Number of Generators
+	std::vector < GeneratorController > elecGenCntrlObj; // generator controller objects
+	Real64 demandLimit; // Demand Limit in Watts(W) which the generator will operate above
+	int trackSchedPtr; // "pointer" to schedule for electrical demand to meet.
+	int bussType; // is this load center powered by AC or DC generators
+	bool inverterPresent;
+	std::string inverterName; // hold name for verificaton and error messages
+	int inverterModelNum; // simulation model parameter type
+	Real64 dCElectricityProd; // Current DC Elect produced (J) (if buss type DCbussInverter)
+	Real64 dCElectProdRate; // Current DC Elect power produced (W) (if buss type DCbussInverter)
+	Real64 dCpowerConditionLosses; // current DC to AC inverter losses (W) (if DCbussInverter)
+	bool storagePresent;
+	std::string storageName; // hold name for verificaton and error messages
+	int storageModelNum; // simulation model parameter type
+	bool transformerPresent;
+	std::string transformerName; // hold name for verificaton and error messages
+	int transformerModelNum; // simulation model parameter type
+	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
+	Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
+	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
+	Real64 thermalProdRate; // Current Thermal energy Production Rate from Equipment (W)
+	Real64 totalPowerRequest; // Total electric power request from the load center (W)
+	Real64 totalThermalPowerRequest; // Total thermal power request from the load center (W)
+	Real64 electDemand; // Current electric power demand on the load center (W)
+
+}; //class ElectPowerLoadCenter
+
+
+
+
+class ElectricPowerServiceManager
+{
+
+private: // Creation
+
+	// Default Constructor
+	ElectricPowerServiceManager() :
+			
+			getInput( true ),
+			NumLoadCenters( 0 ),
+			NumInverters( 0 ),
+			NumElecStorageDevices( 0 ),
+			NumTransformers( 0 ),
+			ElecProducedCoGenIndex( 0 ),
+			ElecProducedPVIndex( 0 ),
+			ElecProducedWTIndex( 0 ),
+			ElecProducedStorageIndex( 0 ),
+			name( "Whole Building" ),
+			electricityProd( 0.0 ),
+			electProdRate( 0.0 ),
+			electricityPurch( 0.0 ),
+			electPurchRate( 0.0 ),
+			electSurplusRate( 0.0 ),
+			electricitySurplus( 0.0 ),
+			electricityNetRate( 0.0 ),
+			electricityNet( 0.0 ),
+			totalBldgElecDemand( 0.0 ),
+			totalHVACElecDemand( 0.0 ),
+			totalElectricDemand( 0.0 ),
+			elecProducedPVRate( 0.0 ),
+			elecProducedWTRate( 0.0 ),
+			elecProducedStorageRate( 0.0 )
+		{}
+
+public: // Methods
+
+
+	void
+	manageElectricLoadCenters(
+		bool const FirstHVACIteration,
+		bool & SimElecCircuits, // simulation convergence flag
+		bool const UpdateMetersOnly // if true then don't resimulate generators, just update meters.
+	);
+
+
+private: //Methods
+	void
+	getPowerManagerInput();
+
+	void
+	updateWholeBuildingRecords();
+
+
+private: // data
+		bool getInput;
+		int NumLoadCenters;
+		int NumInverters;
+		int NumElecStorageDevices;
+		int NumTransformers;
+		int ElecProducedCoGenIndex;
+		int ElecProducedPVIndex;
+		int ElecProducedWTIndex;
+		int ElecProducedStorageIndex;
+		std::string name;
+		std::vector< ElectPowerLoadCenter > elecLoadCenter;
+		Real64 electricityProd; // Current Electric Produced from Equipment (J)
+		Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
+		Real64 electricityPurch; // Current Purchased Electric (J)
+		Real64 electPurchRate; // Current Electric Purhcased Rate (W)
+		Real64 electSurplusRate; // Current excess power (W)
+		Real64 electricitySurplus; // Current excess energy (J)
+		Real64 electricityNetRate; // Net elect rate, + is Purchased, - is Surplus (W)
+		Real64 electricityNet; // Net energy, + is Purchased, - is Surplus (J)
+		Real64 totalBldgElecDemand; // Current Total Building Electric Demand (W)
+		Real64 totalHVACElecDemand; // Current Total HVAC Electric Demand (W)
+		Real64 totalElectricDemand; // Current Total Electric Demand (W)
+		Real64 elecProducedPVRate; // Current Rate of PV Produced from the Arrays (W)
+		Real64 elecProducedWTRate; // Current Rate of Wind Turbine Produced (W)
+		Real64 elecProducedStorageRate; // Current Rate of power to(-)/from(+) storage 
+
+}; // class ElectricPowerServiceManager
+
+
+
+
 
 } // ElectricPowerService namespace
 

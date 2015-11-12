@@ -1,3 +1,6 @@
+// C++ Headers
+#include <memory>
+
 // EnergyPlus Headers
 #include <DataHVACGlobals.hh>
 #include <DataPrecisionGlobals.hh>
@@ -451,7 +454,7 @@ namespace DataHVACGlobals {
 	OptStartDataType OptStartData; // For optimum start
 	Array1D< ComponentSetPtData > CompSetPtEquip;
 
-	ElectricPowerService::ElectricPowerServiceManager facilityElectricServiceObj();
+	std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
 
 
 
