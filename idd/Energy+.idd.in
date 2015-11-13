@@ -78058,11 +78058,22 @@ ElectricLoadCenter:Distribution,
        \key DirectCurrentWithInverterDCStorage
        \key DirectCurrentWithInverterACStorage
        \default AlternatingCurrent
-  A7,  \field Inverter Object Name
+!  A ,  \field Inverter Object Type
+!       \type choice
+!       \key ElectricLoadCenter:Inverter:Simple
+!       \key ElectricLoadCenter:Inverter:FunctionOfPower
+!       \key ElectricLoadCenter:Inverter:LookUpTable
+  
+  A7,  \field Inverter Name
        \note required when Electrical Buss Type=DirectCurrentWithInverter, DirectCurrentWithInverterDCStorage,
        \note or DirectCurrentWithInverterACStorage
        \type object-list
        \object-list InverterList
+!  A ,  \field Electric Storage Object Type
+!       \type choice
+!       \key ElectricLoadCenter:Storage:Simple
+!       \key ElectricLoadCenter:Storage:Battery
+  
   A8,  \field Electrical Storage Object Name
        \note required when Electrical Buss Type=AlternatingCurrentWithStorage, DirectCurrentWithInverterDCStorage,
        \note or DirectCurrentWithInverterACStorage
@@ -78073,7 +78084,7 @@ ElectricLoadCenter:Distribution,
        \type object-list
        \object-list TransformerNames
 
-  A10, \field Storage Charge Operation Scheme
+  A10, \field Storage Charge Power Source
        \note Select what type of power sources can be used to charge storage.
        \type choice
        \key OnSiteGenerators
@@ -78115,8 +78126,8 @@ ElectricLoadCenter:Distribution,
        \type object-list
        \object-list ConverterList
   
-  A13, \field Storage Discharge Operation Scheme
-       \note Select method to govern how storage discharge is controlled
+  A13, \field Storage Operation Scheme
+       \note Select method to govern how storage charge and discharge is controlled
        \type choice
        \key DemandLimit
        \note FacilityDemandLimit indicates that storage discharge control will limit facility power demand drawn from the utility service 
