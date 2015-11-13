@@ -13,11 +13,17 @@
 #include <EnergyPlus.hh>
 #include <PlantLocation.hh>
 #include <OutputProcessor.hh>
+#include <DataHeatBalance.hh>
 
 namespace EnergyPlus {
 
 namespace ElectricPowerService {
 
+	enum thermalLossDestinationEnum {
+		notDetermined,
+		zoneGains,
+		lostToOutside
+	};
 
 class DCtoACInverter
 {
@@ -26,7 +32,7 @@ private: // Creation
 		DCtoACInverter() :
 			modelType( notYetSet ),
 			availSchedPtr( 0 ),
-			heatLossesDestination( 0 ),
+			heatLossesDestination( notDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
 			nightTareLossPower( 0.0 ),
@@ -77,7 +83,7 @@ private: // data
 		std::string name; // user identifier
 		inverterModelTypeEnum modelType; // type of inverter model used
 		int availSchedPtr; // number for availability schedule.
-		int heatLossesDestination;
+		thermalLossDestinationEnum heatLossesDestination;
 		int zoneNum; // destination zone for heat losses from inverter.
 		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
 		Real64 nightTareLossPower; // CEC lookup table model
@@ -114,7 +120,7 @@ private: // Creation
 	ElectricStorage() :
 			storageModelMode( 0 ),
 			availSchedPtr( 0 ),
-			heatLossesDestination( 0 ),
+			heatLossesDestination( notDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
 			startingEnergyStored( 0.0 ),
@@ -236,7 +242,7 @@ private: //data
 		std::string name; // name of this electrical storage module
 		int storageModelMode; // type of model parameter, SimpleBucketStorage
 		int availSchedPtr; // availability schedule index.
-		int heatLossesDestination; // mode for where thermal losses go
+		thermalLossDestinationEnum heatLossesDestination; // mode for where thermal losses go
 		int zoneNum; // destination zone for heat losses from inverter.
 		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
 		Real64 startingEnergyStored; // [J] joules inside at beginning of environment period
@@ -312,7 +318,7 @@ private: // Creation
 		ElectricTransformer() :
 			availSchedPtr( 0 ),
 			usageMode( useNotYetSet ),
-			heatLossesDestination( 0 ),
+			heatLossesDestination( notDetermined ),
 			zoneNum( 0 ),
 			zoneRadFrac( 0.0 ),
 			ratedCapacity( 0.0 ),
@@ -379,7 +385,7 @@ private: //data
 	std::string name; // user identifier
 	int availSchedPtr; // availability schedule index.
 	transformerUse usageMode; // mode for transformer usage
-	int heatLossesDestination; // mode for where thermal losses go
+	thermalLossDestinationEnum heatLossesDestination; // mode for where thermal losses go
 	int zoneNum; // destination zone for heat losses from inverter.
 	Real64 zoneRadFrac; // radiative fraction for thermal losses to zone
 	Real64 ratedCapacity; // rated capacity [VA]
@@ -579,7 +585,7 @@ private: // data
 	electricBussTypeEnum bussType; // is this load center powered by AC or DC generators
 	bool inverterPresent;
 	std::string inverterName; // hold name for verificaton and error messages
-	std::unique_ptr < DCtoACInverter > inverterOjb;
+	std::unique_ptr < DCtoACInverter > inverterObj;
 	int inverterModelNum; // simulation model parameter type
 	Real64 dCElectricityProd; // Current DC Elect produced (J) (if buss type DCbussInverter)
 	Real64 dCElectProdRate; // Current DC Elect power produced (W) (if buss type DCbussInverter)
