@@ -4,6 +4,7 @@
 // C++ Headers
 #include <string>
 #include <vector>
+#include <memory>
 
 // ObjexxFCL Headers
 //#include <ObjexxFCL/Array1.hh>
@@ -11,6 +12,7 @@
 
 #include <EnergyPlus.hh>
 #include <PlantLocation.hh>
+#include <OutputProcessor.hh>
 
 namespace EnergyPlus {
 
@@ -22,7 +24,7 @@ class DCtoACInverter
 private: // Creation
 	// Default Constructor
 		DCtoACInverter() :
-			modelType( 0 ),
+			modelType( notYetSet ),
 			availSchedPtr( 0 ),
 			heatLossesDestination( 0 ),
 			zoneNum( 0 ),
@@ -52,8 +54,8 @@ private: // Creation
 
 public: // Methods
 
-	DCtoACInverter
-	dCtoACInverterFactory(
+
+	DCtoACInverter(
 		std::string const objectName
 	);
 
@@ -65,8 +67,15 @@ private: //Methods
 	figureInverterZoneGains();
 
 private: // data
+		enum inverterModelTypeEnum {
+			notYetSet,
+			cECLookUpTableModel,
+			curveFuncOfPower,
+			simpleConstantEff
+		};
+
 		std::string name; // user identifier
-		int modelType; // type of inverter model used
+		inverterModelTypeEnum modelType; // type of inverter model used
 		int availSchedPtr; // number for availability schedule.
 		int heatLossesDestination;
 		int zoneNum; // destination zone for heat losses from inverter.
@@ -167,8 +176,8 @@ private: // Creation
 		{}
 
 public: //methods
-	ElectricStorage
-	electricStorageFactory(
+
+	ElectricStorage(
 		std::string const objectName
 		// need object type
 	);
@@ -302,7 +311,7 @@ private: // Creation
 	// Default Constructor
 		ElectricTransformer() :
 			availSchedPtr( 0 ),
-			usageMode( 0 ),
+			usageMode( useNotYetSet ),
 			heatLossesDestination( 0 ),
 			zoneNum( 0 ),
 			zoneRadFrac( 0.0 ),
@@ -340,13 +349,16 @@ private: // Creation
 
 public: //methods
 
-	ElectricTransformer
-	electricTransformerFactory(
+	// constructor
+	ElectricTransformer(
 		std::string const objectName
 	);
 
 	void
 	manageTransformers();
+
+	void
+	setupMeterIndices();
 
 private: //methods
 
@@ -357,52 +369,59 @@ private: //methods
 
 
 private: //data
-		std::string name; // user identifier
-		int availSchedPtr; // availability schedule index.
-		int usageMode; // mode for transformer usage
-		int heatLossesDestination; // mode for where thermal losses go
-		int zoneNum; // destination zone for heat losses from inverter.
-		Real64 zoneRadFrac; // radiative fraction for thermal losses to zone
-		Real64 ratedCapacity; // rated capacity [VA]
-		int phase; // phase
-		Real64 factorTempCoeff; // thermal coefficient of resistance for winding material
-		Real64 tempRise; // full load temperature rise [C]
-		Real64 eddyFrac; // fraction of eddy current losses []
-		int performanceInputMode; // performance input method
-		Real64 ratedEfficiency; // nameplate efficiency []
-		Real64 ratedPUL; // per unit load for nameplate efficiency []
-		Real64 ratedTemp; // reference temperature for nameplate efficiency [C]
-		Real64 maxPUL; // per unit load for maximum efficiency []
-		bool considerLosses; // if true, consider transformer lossses in metering
-		std::vector < std::string > wiredMeterNames; // names of the meters wired to transformer
-		std::vector < int > wiredMeterPtrs; // array of "pointers" to meters wired to transformer
-		std::vector < bool > specialMeter; // indicates whether a meter needs special consideration
-		// Electricity:Facility and Electricity:HVAC are two special
-		// meters because tranformer loss is part of them
-		//calculated and from elsewhere vars
-		Real64 ratedNL; // rated no load losses, user input or calculated [W]
-		Real64 ratedLL; // rated load losses, user input or calculated [W]
-		int loadCenterNum; // number of load centers served by the transformer
-		std::vector < int > loadCenterIndexes; // index array of load centers served by the transformer
-		int overloadErrorIndex; // used for warning message when transformer is overloaded
-		//results and reporting
-		Real64 efficiency; // transformer efficiency
-		Real64 powerIn; // [W]
-		Real64 energyIn; // [J]
-		Real64 powerOut; // [W]
-		Real64 energyOut; // [J]
-		Real64 noLoadLossRate; // [W]
-		Real64 noLoadLossEnergy; // [J]
-		Real64 loadLossRate; // [W]
-		Real64 loadLossEnergy; // [J]
-		Real64 thermalLossRate; // [W]
-		Real64 thermalLossEnergy; // [J]
-		Real64 elecUseUtility; // [J] Energy consumption for a utility transformer (power in)
-		// Positive values
-		Real64 elecProducedCoGen; // [J] Energy consumption for a cogeneration transformer (power out)
-		// Negative values
-		Real64 qdotConvZone; // [W]
-		Real64 qdotRadZone; // [W]
+
+	enum transformerUse {
+		useNotYetSet,
+		powerInFromGrid,
+		powerOutFromBldg
+	};
+
+	std::string name; // user identifier
+	int availSchedPtr; // availability schedule index.
+	transformerUse usageMode; // mode for transformer usage
+	int heatLossesDestination; // mode for where thermal losses go
+	int zoneNum; // destination zone for heat losses from inverter.
+	Real64 zoneRadFrac; // radiative fraction for thermal losses to zone
+	Real64 ratedCapacity; // rated capacity [VA]
+	int phase; // phase
+	Real64 factorTempCoeff; // thermal coefficient of resistance for winding material
+	Real64 tempRise; // full load temperature rise [C]
+	Real64 eddyFrac; // fraction of eddy current losses []
+	int performanceInputMode; // performance input method
+	Real64 ratedEfficiency; // nameplate efficiency []
+	Real64 ratedPUL; // per unit load for nameplate efficiency []
+	Real64 ratedTemp; // reference temperature for nameplate efficiency [C]
+	Real64 maxPUL; // per unit load for maximum efficiency []
+	bool considerLosses; // if true, consider transformer lossses in metering
+	std::vector < std::string > wiredMeterNames; // names of the meters wired to transformer
+	std::vector < int > wiredMeterPtrs; // array of "pointers" to meters wired to transformer
+	std::vector < bool > specialMeter; // indicates whether a meter needs special consideration
+	// Electricity:Facility and Electricity:HVAC are two special
+	// meters because tranformer loss is part of them
+	//calculated and from elsewhere vars
+	Real64 ratedNL; // rated no load losses, user input or calculated [W]
+	Real64 ratedLL; // rated load losses, user input or calculated [W]
+	int loadCenterNum; // number of load centers served by the transformer
+	std::vector < int > loadCenterIndexes; // index array of load centers served by the transformer
+	int overloadErrorIndex; // used for warning message when transformer is overloaded
+	//results and reporting
+	Real64 efficiency; // transformer efficiency
+	Real64 powerIn; // [W]
+	Real64 energyIn; // [J]
+	Real64 powerOut; // [W]
+	Real64 energyOut; // [J]
+	Real64 noLoadLossRate; // [W]
+	Real64 noLoadLossEnergy; // [J]
+	Real64 loadLossRate; // [W]
+	Real64 loadLossEnergy; // [J]
+	Real64 thermalLossRate; // [W]
+	Real64 thermalLossEnergy; // [J]
+	Real64 elecUseUtility; // [J] Energy consumption for a utility transformer (power in)
+	// Positive values
+	Real64 elecProducedCoGen; // [J] Energy consumption for a cogeneration transformer (power out)
+	// Negative values
+	Real64 qdotConvZone; // [W]
+	Real64 qdotRadZone; // [W]
 
 
 }; //ElectricTransformer
@@ -433,8 +452,7 @@ private: // Creation
 
 public: // Methods
 
-	GeneratorController
-	generatorControllerFactory(
+	GeneratorController(
 		std::string const objectName
 	);
 
@@ -480,12 +498,12 @@ class ElectPowerLoadCenter
 private: // Creation
 	// Default Constructor
 	ElectPowerLoadCenter() :
-		genOperationScheme( 0 ),
+		genOperationScheme( genOpSchemeNotYetSet ),
 		demandMeterPtr( 0 ),
 		numGenerators( 0 ),
 		demandLimit( 0.0 ),
 		trackSchedPtr( 0 ),
-		bussType( 0 ),
+		bussType( bussNotYetSet ),
 		inverterPresent( false ),
 		inverterModelNum( 0 ),
 		dCElectricityProd( 0.0 ),
@@ -508,9 +526,9 @@ private: // Creation
 
 public: // Methods
 
-	ElectPowerLoadCenter
-	electricLoadCenterFactory(
-		std::string const objectName
+
+	ElectPowerLoadCenter(
+		int const objectNum
 	);
 
 private: //Methods
@@ -528,9 +546,29 @@ private: //Methods
 	ElectPowerLoadCenter::verifyCustomMetersElecPowerMgr();
 
 private: // data
+	enum generatorOpSchemeEnum {
+		genOpSchemeNotYetSet,
+		genOpSchemeBaseLoad,
+		genOpSchemeDemandLimit,
+		genOpSchemeTrackElectrical,
+		genOpSchemeTrackSchedule,
+		genOpSchemeTrackMeter,
+		genOpSchemeThermalFollow,
+		genOpSchemeThermalFollowLimitElectrical
+	};
+
+	enum electricBussTypeEnum {
+		bussNotYetSet,
+		aCBuss,
+		dCBussInverter,
+		aCBussStorage,
+		dCBussInverterDCStorage,
+		dCBussInverterACStorage
+	};
+
 	std::string name; // user identifier
 	std::string generatorList; // List name of available generators
-	int genOperationScheme; // Name of Operation Scheme
+	generatorOpSchemeEnum genOperationScheme; // Name of Operation Scheme
 	std::string demandMeterName; // Name of Demand Energy Meter for "on demand" operation
 	int demandMeterPtr; // "pointer" to Meter for electrical Demand to meet
 	std::string generationMeterName; // Name of Generated Energy Meter for "on demand" operation
@@ -538,18 +576,21 @@ private: // data
 	std::vector < GeneratorController > elecGenCntrlObj; // generator controller objects
 	Real64 demandLimit; // Demand Limit in Watts(W) which the generator will operate above
 	int trackSchedPtr; // "pointer" to schedule for electrical demand to meet.
-	int bussType; // is this load center powered by AC or DC generators
+	electricBussTypeEnum bussType; // is this load center powered by AC or DC generators
 	bool inverterPresent;
 	std::string inverterName; // hold name for verificaton and error messages
+	std::unique_ptr < DCtoACInverter > inverterOjb;
 	int inverterModelNum; // simulation model parameter type
 	Real64 dCElectricityProd; // Current DC Elect produced (J) (if buss type DCbussInverter)
 	Real64 dCElectProdRate; // Current DC Elect power produced (W) (if buss type DCbussInverter)
 	Real64 dCpowerConditionLosses; // current DC to AC inverter losses (W) (if DCbussInverter)
 	bool storagePresent;
 	std::string storageName; // hold name for verificaton and error messages
+	std::unique_ptr < ElectricStorage > storageObj;
 	int storageModelNum; // simulation model parameter type
 	bool transformerPresent;
 	std::string transformerName; // hold name for verificaton and error messages
+	std::unique_ptr < ElectricTransformer > transformerObj;
 	int transformerModelNum; // simulation model parameter type
 	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
 	Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
@@ -572,15 +613,17 @@ private: // Creation
 	// Default Constructor
 	ElectricPowerServiceManager() :
 			
-			getInput( true ),
-			NumLoadCenters( 0 ),
-			NumInverters( 0 ),
-			NumElecStorageDevices( 0 ),
-			NumTransformers( 0 ),
-			ElecProducedCoGenIndex( 0 ),
-			ElecProducedPVIndex( 0 ),
-			ElecProducedWTIndex( 0 ),
-			ElecProducedStorageIndex( 0 ),
+			getInputFlag( true ),
+			numLoadCenters( 0 ),
+
+			numElecStorageDevices( 0 ),
+			numTransformers( 0 ),
+			setupMeterIndexFlag( true ),
+			elecFacilityIndex( 0 ),
+			elecProducedCoGenIndex( 0 ),
+			elecProducedPVIndex( 0 ),
+			elecProducedWTIndex( 0 ),
+			elecProducedStorageIndex( 0 ),
 			name( "Whole Building" ),
 			electricityProd( 0.0 ),
 			electProdRate( 0.0 ),
@@ -614,21 +657,26 @@ private: //Methods
 	getPowerManagerInput();
 
 	void
+	setupMeterIndices();
+
+	void
 	updateWholeBuildingRecords();
 
 
 private: // data
-		bool getInput;
-		int NumLoadCenters;
-		int NumInverters;
-		int NumElecStorageDevices;
-		int NumTransformers;
-		int ElecProducedCoGenIndex;
-		int ElecProducedPVIndex;
-		int ElecProducedWTIndex;
-		int ElecProducedStorageIndex;
+		bool getInputFlag; // control if object needs to get input and call factory methods
+		int numLoadCenters;
+
+		int numElecStorageDevices;
+		int numTransformers;
+		bool setupMeterIndexFlag;  // control if object needs to make calls to GetMeterIndex
+		int elecFacilityIndex;
+		int elecProducedCoGenIndex;
+		int elecProducedPVIndex;
+		int elecProducedWTIndex;
+		int elecProducedStorageIndex;
 		std::string name;
-		std::vector< ElectPowerLoadCenter > elecLoadCenter;
+		std::vector< ElectPowerLoadCenter > elecLoadCenterObjs;
 		Real64 electricityProd; // Current Electric Produced from Equipment (J)
 		Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
 		Real64 electricityPurch; // Current Purchased Electric (J)
