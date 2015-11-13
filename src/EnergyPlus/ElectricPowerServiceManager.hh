@@ -14,6 +14,7 @@
 #include <PlantLocation.hh>
 #include <OutputProcessor.hh>
 #include <DataHeatBalance.hh>
+#include <EMSManager.hh>
 
 namespace EnergyPlus {
 
@@ -437,7 +438,9 @@ class GeneratorController
 private: // Creation
 	// Default Constructor
 	GeneratorController() :
-		compType_Num( 0 ),
+		name(""),
+		typeOfName(""),
+		generatorType( generatorNotYetSet ),
 		generatorIndex( 0 ),
 		maxPowerOut( 0.0 ),
 		availSchedPtr( 0 ),
@@ -459,7 +462,11 @@ private: // Creation
 public: // Methods
 
 	GeneratorController(
-		std::string const objectName
+		std::string const objectName,
+		std::string const objectType,
+		Real64 const ratedElecPowerOutput,
+		std::string const availSchedName,
+		Real64 const thermalToElectRatio
 	);
 
 	void
@@ -475,10 +482,23 @@ private: //Methods
 
 
 private: // data
+	enum generatorTypeEnum {
+		generatorNotYetSet,
+		generatorICEngine,
+		generatorCombTurbine,
+		generatorPV,
+		generatorFuelCell,
+		generatorMicroCHP,
+		generatorMicroturbine,
+		generatorWindTurbine
+	};
+
+
 	std::string name; // user identifier
-	std::string typeOf; // equipment type
-	int compType_Num; // Numeric designator for CompType (TypeOf)
-	int generatorIndex;
+	std::string typeOfName; // equipment type
+//	int compType_Num; // Numeric designator for CompType (TypeOf)
+	generatorTypeEnum generatorType;
+	int generatorIndex; // index in generator model data struct
 	Real64 maxPowerOut; // Maximum Power Output (W)
 	std::string availSched; // Operation Schedule.
 	int availSchedPtr; // pointer to operation schedule
@@ -504,6 +524,8 @@ class ElectPowerLoadCenter
 private: // Creation
 	// Default Constructor
 	ElectPowerLoadCenter() :
+		name( ""),
+		generatorListName( ""),
 		genOperationScheme( genOpSchemeNotYetSet ),
 		demandMeterPtr( 0 ),
 		numGenerators( 0 ),
@@ -573,7 +595,7 @@ private: // data
 	};
 
 	std::string name; // user identifier
-	std::string generatorList; // List name of available generators
+	std::string generatorListName; // List name of available generators
 	generatorOpSchemeEnum genOperationScheme; // Name of Operation Scheme
 	std::string demandMeterName; // Name of Demand Energy Meter for "on demand" operation
 	int demandMeterPtr; // "pointer" to Meter for electrical Demand to meet

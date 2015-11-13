@@ -14,8 +14,10 @@
 #include <InputProcessor.hh>
 #include <DataIPShortCuts.hh>
 #include <ScheduleManager.hh>
+#include <CurveManager.hh>
 #include <DataHeatBalance.hh>
 #include <HeatBalanceInternalHeatGains.hh>
+#include <EMSManager.hh>
 
 namespace EnergyPlus {
 
@@ -80,26 +82,26 @@ namespace ElectricPowerService {
 		int const objectNum
 	)
 	{
-		std::string const routineName = "ElectPowerLoadCenter constructor";
-		int NumAlphas; // Number of elements in the alpha array
-		int NumNums; // Number of elements in the numeric array
+		std::string const routineName = "ElectPowerLoadCenter constructor ";
+		int numAlphas; // Number of elements in the alpha array
+		int numNums; // Number of elements in the numeric array
 		int IOStat; // IO Status when calling get input subroutine
 		bool errorsFound;
 
 		DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Distribution";
 		errorsFound = false;
-		InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, objectNum, DataIPShortCuts::cAlphaArgs, NumAlphas, DataIPShortCuts::rNumericArgs, NumNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+		InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, objectNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
 
 		this->name          = DataIPShortCuts::cAlphaArgs( 1 );
 		// how to verify names are unique across objects? add to GlobalNames?
 
-		this->generatorList = DataIPShortCuts::cAlphaArgs( 2 );
+		this->generatorListName = DataIPShortCuts::cAlphaArgs( 2 );
 
 		//Load the Generator Control Operation Scheme
 		if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "Baseload" ) ) {
 			this->genOperationScheme = genOpSchemeBaseLoad;
 		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "DemandLimit" ) ) {
-			this->genOperationScheme = genOpSchemeDemandLimit
+			this->genOperationScheme = genOpSchemeDemandLimit;
 		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "TrackElectrical" ) ) {
 			this->genOperationScheme = genOpSchemeTrackElectrical;
 		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "TrackSchedule" ) ) {
@@ -129,7 +131,6 @@ namespace ElectricPowerService {
 			}
 			ShowContinueError( "Schedule not found; Must be entered and valid when Generator Operation Scheme=TrackSchedule" );
 			errorsFound = true;
-		
 		}
 
 		this->demandMeterName = InputProcessor::MakeUPPERCase( DataIPShortCuts::cAlphaArgs( 5 ) );
@@ -167,14 +168,41 @@ namespace ElectricPowerService {
 
 		if ( this->inverterPresent ) {
 			if ( !  DataIPShortCuts::lAlphaFieldBlanks( 7 ) ) {
-				// call inverter constructor
-				this->inverterObj = std::make_unique< DCtoACInverter >( DataIPShortCuts::cAlphaFieldNames( 7 ) );
+				this->inverterName = DataIPShortCuts::cAlphaFieldNames( 7 );
 			} else {
 				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
 				ShowContinueError( DataIPShortCuts::cAlphaFieldNames( 7 ) + " is blank, but buss type requires inverter.");
 				errorsFound = true;
 			}
 
+		}
+
+
+		// now that we done with get input for ElectricLoadCenter:Distribution we can call child input objects without IP shortcut problems
+
+		DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Generators";
+		int genListObjectNum = InputProcessor::GetObjectItemNum( DataIPShortCuts::cCurrentModuleObject, this->generatorListName );
+		if ( genListObjectNum > 0 ){
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, objectNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+
+			//Calculate the number of generators in list
+			this->numGenerators = numNums / 2; // note IDD needs Min Fields = 6  
+			if ( mod( ( numAlphas - 1 + numNums ), 5 ) != 0 ) ++this->numGenerators;
+			int alphaCount = 2;
+			for ( auto genCount = 1; genCount <= this->numGenerators; ++genCount) {
+				// call constructor in place
+				this->elecGenCntrlObj.emplace_back( GeneratorController( DataIPShortCuts::cAlphaArgs( alphaCount ), DataIPShortCuts::cAlphaArgs( alphaCount + 1 ), DataIPShortCuts::rNumericArgs( 2 * genCount - 1 ), DataIPShortCuts::cAlphaArgs( alphaCount + 2 ), DataIPShortCuts::rNumericArgs( 2 * genCount) ) );
+				++alphaCount;
+				++alphaCount;
+				++alphaCount;
+			}
+
+		}
+
+
+		if ( ! errorsFound && this->inverterPresent ) {
+			// call inverter constructor
+			this->inverterObj = std::make_unique< DCtoACInverter >( this->inverterName );
 		}
 
 
@@ -199,10 +227,63 @@ namespace ElectricPowerService {
 	}
 
 	GeneratorController::GeneratorController(
-		std::string const objectName 
+		std::string const objectName,
+		std::string const objectType,
+		Real64 const ratedElecPowerOutput,
+		std::string const availSchedName,
+		Real64 const thermalToElectRatio
 	)
 	{
-		
+		std::string const routineName = "GeneratorController constructor ";
+		bool errorsFound = false;
+
+		this->name                   = objectName;
+		this->typeOfName             = objectType;
+		if ( InputProcessor::SameString( objectType, "Generator:InternalCombustionEngine" ) ) {
+			this->generatorType = generatorICEngine;
+		} else if ( InputProcessor::SameString( objectType, "Generator:CombustionTurbine" ) ) {
+			this->generatorType = generatorCombTurbine;
+		} else if ( InputProcessor::SameString( objectType, "Generator:MicroTurbine" ) ) {
+			this->generatorType = generatorMicroturbine;
+		} else if ( InputProcessor::SameString( objectType, "Generator:Photovoltaic" ) ) {
+			this->generatorType = generatorPV;
+		} else if ( InputProcessor::SameString( objectType, "Generator:FuelCell" ) ) {
+			this->generatorType = generatorFuelCell;
+		} else if ( InputProcessor::SameString( objectType, "Generator:MicroCHP" ) ) {
+			this->generatorType = generatorMicroCHP;
+		} else if ( InputProcessor::SameString( objectType, "Generator:WindTurbine" ) ) {
+			this->generatorType = generatorWindTurbine;
+		} else {
+			ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + " invalid entry." );
+			ShowContinueError( "Invalid " + objectType + " associated with generator = " + objectName ) ;
+			errorsFound = true;
+		}
+
+		this->availSched             = availSchedName;
+		if ( availSched.empty() ) {
+			this->availSchedPtr = DataGlobals::ScheduleAlwaysOn;
+		} else {
+			this->availSchedPtr =  ScheduleManager::GetScheduleIndex( availSchedName );
+			if ( this->availSchedPtr <= 0 ) {
+				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + ", invalid entry." );
+				ShowContinueError( "Invalid availability schedule = " + availSchedName );
+				ShowContinueError( "Schedule was not found " );
+				errorsFound = true;
+			}
+		}
+
+		this->maxPowerOut            = ratedElecPowerOutput,
+		this->nominalThermElectRatio = thermalToElectRatio;
+
+		SetupOutputVariable( "Generator Requested Electric Power [W]", this->powerRequestThisTimestep, "System", "Average", objectName );
+		if ( DataGlobals::AnyEnergyManagementSystemInModel ) {
+			SetupEMSInternalVariable( "Generator Nominal Maximum Power", objectName, "[W]", this->maxPowerOut );
+			SetupEMSInternalVariable( "Generator Nominal Thermal To Electric Ratio", objectName, "[ratio]", this->nominalThermElectRatio );
+
+			SetupEMSActuator( "On-Site Generator Control", objectName, "Requested Power", "[W]", this->eMSRequestOn, this->eMSPowerRequest );
+
+		}
+
 	}
 
 	void
@@ -304,7 +385,7 @@ namespace ElectricPowerService {
 				break;
 			}
 			case curveFuncOfPower: {
-				this->curveNum = ScheduleManager::GetCurveIndex( DataIPShortCuts::cAlphaArgs( 4 ) );
+				this->curveNum = CurveManager::GetCurveIndex( DataIPShortCuts::cAlphaArgs( 4 ) );
 				if ( this->curveNum == 0 ) {
 					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
 					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + " = " + DataIPShortCuts::cAlphaArgs( 4 ) );
