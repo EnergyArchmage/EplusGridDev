@@ -119,7 +119,9 @@ class ElectricStorage
 private: // Creation
 	// Default Constructor
 	ElectricStorage() :
-			storageModelMode( 0 ),
+			maxRainflowArrayBounds( 100 ),
+			maxRainflowArrayInc( 100 ),
+			storageModelMode( storageTypeNotSet ),
 			availSchedPtr( 0 ),
 			heatLossesDestination( notDetermined ),
 			zoneNum( 0 ),
@@ -145,7 +147,7 @@ private: // Creation
 			maxDischargeI( 0.0 ),
 			cutoffV( 0.0 ),
 			maxChargeRate( 0.0 ),
-			lifeCalculation( 0 ),
+			lifeCalculation( degredationNotSet ),
 			lifeCurveNum( 0 ),
 			thisTimeStepStateOfCharge( 0.0 ),
 			lastTimeStepStateOfCharge( 0.0 ),
@@ -240,75 +242,90 @@ private: //methods
 public: //data
 
 private: //data
-		std::string name; // name of this electrical storage module
-		int storageModelMode; // type of model parameter, SimpleBucketStorage
-		int availSchedPtr; // availability schedule index.
-		thermalLossDestinationEnum heatLossesDestination; // mode for where thermal losses go
-		int zoneNum; // destination zone for heat losses from inverter.
-		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
-		Real64 startingEnergyStored; // [J] joules inside at beginning of environment period
-		Real64 energeticEfficCharge; // [ ] efficiency of charging
-		Real64 energeticEfficDischarge; // [ ] efficiency of discharging
-		Real64 maxPowerDraw; // [W] max rate of discharge
-		Real64 maxPowerStore; // [W] max rate of charge
-		Real64 maxEnergyCapacity; // [J] max storage capacity
-		int parallelNum; // [ ] number of battery modules in parallel
-		int seriesNum; // [ ] number of battery modules in series
-		int chargeCurveNum; // [ ] voltage change curve index number for charging
-		int dischargeCurveNum; // [ ] voltage change curve index number for discharging
-		int cycleBinNum; // [ ] number of cycle bins
-		Real64 startingSOC; // [ ] initial fractional state of charge
-		Real64 maxAhCapacity; // [Ah]maximum capacity
-		Real64 availableFrac; // [ ] fraction of available charge capacity
-		Real64 chargeConversionRate; // [1/h]change rate from bound charge energy to available charge
-		Real64 chargedOCV; // [V] fully charged oppen circuit voltage
-		Real64 dischargedOCV; // [V] fully discharged open circuit voltage
-		Real64 internalR; // [ohm]internal electric resistance
-		Real64 maxDischargeI; // [A] maximum discharging current
-		Real64 cutoffV; // [V] cut-off voltage
-		Real64 maxChargeRate; // [1/h]charge rate limit
-		int lifeCalculation; // [ ]battery life calculation: Yes or No
-		int lifeCurveNum; // [ ]battery life curve name index number
-		//calculated and from elsewhere vars
-		Real64 thisTimeStepStateOfCharge; // [J]
-		Real64 lastTimeStepStateOfCharge; // [J]
-		Real64 pelNeedFromStorage; // [W]
-		Real64 pelFromStorage; // [W]
-		bool eMSOverridePelFromStorage; // if true, EMS calling for override
-		Real64 eMSValuePelFromStorage; // value EMS is directing to use, power from storage [W]
-		Real64 pelIntoStorage; // [W]
-		bool eMSOverridePelIntoStorage; // if true, EMS calling for override
-		Real64 eMSValuePelIntoStorage; // value EMS is directing to use, power into storage [W]
-		Real64 qdotConvZone; // [W]
-		Real64 qdotRadZone; // [W]
-		Real64 timeElapsed; // [h]
-		Real64 thisTimeStepAvailable; // [Ah] available charge at the current timestep
-		Real64 thisTimeStepBound; // [Ah] bound charge at the current timestep
-		Real64 lastTimeStepAvailable; // [Ah] available charge at the previous timestep
-		Real64 lastTimeStepBound; // [Ah] bound charge at the previous timestep
-		Real64 lastTwoTimeStepAvailable; // [Ah] available charge at the previous two timesteps
-		Real64 lastTwoTimeStepBound; // [Ah] bound charge at the previous two timesteps
-		//battery life calculation variables
-		int count0;
-		std::vector < Real64 > b10;
-		std::vector < Real64 > x0;
-		std::vector < Real64 > nmb0;
-		std::vector < Real64 > oneNmb0;
-		//report
-		Real64 electEnergyinStorage; // [J] state of charge
-		Real64 storedPower; // [W]
-		Real64 storedEnergy; // [J]
-		Real64 decrementedEnergyStored; // [J] this is the negative of StoredEnergy
-		Real64 drawnPower; // [W]
-		Real64 drawnEnergy; // [J]
-		Real64 thermLossRate; // [W]
-		Real64 thermLossEnergy; // [J]
-		int storageMode; // [ ] mode of operation 0 for idle, 1 for discharging, 2 for charging
-		Real64 absoluteSOC; // [Ah] total state of charge
-		Real64 fractionSOC; // [ ] fractional state of charge
-		Real64 batteryCurrent; // [A] total current
-		Real64 batteryVoltage; // [V] total voltage
-		Real64 batteryDamage; // [ ] fractional battery damage
+
+	enum storageModelTypeEnum {
+		storageTypeNotSet,
+		simpleBucketStorage,
+		kiBaMBattery
+	};
+
+	enum degredationModelTypeEnum {
+		degredationNotSet,
+		batteryLifeCalculationYes,
+		batteryLifeCalculationNo
+	};
+	int const maxRainflowArrayBounds = 100;
+	int const maxRainflowArrayInc = 100;
+
+	std::string name; // name of this electrical storage module
+	storageModelTypeEnum storageModelMode; // type of model parameter, SimpleBucketStorage
+	int availSchedPtr; // availability schedule index.
+	thermalLossDestinationEnum heatLossesDestination; // mode for where thermal losses go
+	int zoneNum; // destination zone for heat losses from inverter.
+	Real64 zoneRadFract; // radiative fraction for thermal losses to zone
+	Real64 startingEnergyStored; // [J] joules inside at beginning of environment period
+	Real64 energeticEfficCharge; // [ ] efficiency of charging
+	Real64 energeticEfficDischarge; // [ ] efficiency of discharging
+	Real64 maxPowerDraw; // [W] max rate of discharge
+	Real64 maxPowerStore; // [W] max rate of charge
+	Real64 maxEnergyCapacity; // [J] max storage capacity
+	int parallelNum; // [ ] number of battery modules in parallel
+	int seriesNum; // [ ] number of battery modules in series
+	int chargeCurveNum; // [ ] voltage change curve index number for charging
+	int dischargeCurveNum; // [ ] voltage change curve index number for discharging
+	int cycleBinNum; // [ ] number of cycle bins
+	Real64 startingSOC; // [ ] initial fractional state of charge
+	Real64 maxAhCapacity; // [Ah]maximum capacity
+	Real64 availableFrac; // [ ] fraction of available charge capacity
+	Real64 chargeConversionRate; // [1/h]change rate from bound charge energy to available charge
+	Real64 chargedOCV; // [V] fully charged oppen circuit voltage
+	Real64 dischargedOCV; // [V] fully discharged open circuit voltage
+	Real64 internalR; // [ohm]internal electric resistance
+	Real64 maxDischargeI; // [A] maximum discharging current
+	Real64 cutoffV; // [V] cut-off voltage
+	Real64 maxChargeRate; // [1/h]charge rate limit
+	degredationModelTypeEnum lifeCalculation; // [ ]battery life calculation: Yes or No
+	int lifeCurveNum; // [ ]battery life curve name index number
+	//calculated and from elsewhere vars
+	Real64 thisTimeStepStateOfCharge; // [J]
+	Real64 lastTimeStepStateOfCharge; // [J]
+	Real64 pelNeedFromStorage; // [W]
+	Real64 pelFromStorage; // [W]
+	bool eMSOverridePelFromStorage; // if true, EMS calling for override
+	Real64 eMSValuePelFromStorage; // value EMS is directing to use, power from storage [W]
+	Real64 pelIntoStorage; // [W]
+	bool eMSOverridePelIntoStorage; // if true, EMS calling for override
+	Real64 eMSValuePelIntoStorage; // value EMS is directing to use, power into storage [W]
+	Real64 qdotConvZone; // [W]
+	Real64 qdotRadZone; // [W]
+	Real64 timeElapsed; // [h]
+	Real64 thisTimeStepAvailable; // [Ah] available charge at the current timestep
+	Real64 thisTimeStepBound; // [Ah] bound charge at the current timestep
+	Real64 lastTimeStepAvailable; // [Ah] available charge at the previous timestep
+	Real64 lastTimeStepBound; // [Ah] bound charge at the previous timestep
+	Real64 lastTwoTimeStepAvailable; // [Ah] available charge at the previous two timesteps
+	Real64 lastTwoTimeStepBound; // [Ah] bound charge at the previous two timesteps
+	//battery life calculation variables
+	int count0;
+	std::vector < Real64 > b10;
+	std::vector < Real64 > x0;
+	std::vector < Real64 > nmb0;
+	std::vector < Real64 > oneNmb0;
+	//report
+	Real64 electEnergyinStorage; // [J] state of charge
+	Real64 storedPower; // [W]
+	Real64 storedEnergy; // [J]
+	Real64 decrementedEnergyStored; // [J] this is the negative of StoredEnergy
+	Real64 drawnPower; // [W]
+	Real64 drawnEnergy; // [J]
+	Real64 thermLossRate; // [W]
+	Real64 thermLossEnergy; // [J]
+	int storageMode; // [ ] mode of operation 0 for idle, 1 for discharging, 2 for charging
+	Real64 absoluteSOC; // [Ah] total state of charge
+	Real64 fractionSOC; // [ ] fractional state of charge
+	Real64 batteryCurrent; // [A] total current
+	Real64 batteryVoltage; // [V] total voltage
+	Real64 batteryDamage; // [ ] fractional battery damage
 
 }; //ElectricStorage
 
@@ -616,7 +633,7 @@ private: // data
 	std::string storageName; // hold name for verificaton and error messages
 	std::unique_ptr < ElectricStorage > storageObj;
 	int storageModelNum; // simulation model parameter type
-	bool transformerPresent;
+	bool transformerPresent; // should only be transformers for on-site load center, not facility service 
 	std::string transformerName; // hold name for verificaton and error messages
 	std::unique_ptr < ElectricTransformer > transformerObj;
 	int transformerModelNum; // simulation model parameter type
@@ -653,6 +670,8 @@ private: // Creation
 			elecProducedWTIndex( 0 ),
 			elecProducedStorageIndex( 0 ),
 			name( "Whole Building" ),
+			facilityTransformerPresent( false ),
+			facilityTransformerName( ""),
 			electricityProd( 0.0 ),
 			electProdRate( 0.0 ),
 			electricityPurch( 0.0 ),
@@ -705,6 +724,9 @@ private: // data
 		int elecProducedStorageIndex;
 		std::string name;
 		std::vector< ElectPowerLoadCenter > elecLoadCenterObjs;
+		bool facilityTransformerPresent;
+		std::string facilityTransformerName; // hold name for verificaton and error messages
+		std::unique_ptr < ElectricTransformer > facilityTransformerObj;
 		Real64 electricityProd; // Current Electric Produced from Equipment (J)
 		Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
 		Real64 electricityPurch; // Current Purchased Electric (J)

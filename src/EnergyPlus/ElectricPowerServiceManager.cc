@@ -177,8 +177,23 @@ namespace ElectricPowerService {
 
 		}
 
+		if ( this->storagePresent ) {
+			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 8 ) ) {
+				this->storageName = DataIPShortCuts::cAlphaFieldNames( 8 );
+			} else {
+				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+				ShowContinueError( DataIPShortCuts::cAlphaFieldNames( 8 ) + " is blank, but buss type requires storage.");
+				errorsFound = true;
+			}
+		}
 
-		// now that we done with get input for ElectricLoadCenter:Distribution we can call child input objects without IP shortcut problems
+		if ( ! DataIPShortCuts::lAlphaFieldBlanks( 9 ) ) {
+			// process transformer
+			this->transformerName = DataIPShortCuts::cAlphaFieldNames( 9 );
+			this->transformerPresent =  true;
+		}
+
+		// now that we are done with processing get input for ElectricLoadCenter:Distribution we can call child input objects without IP shortcut problems
 
 		DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Generators";
 		int genListObjectNum = InputProcessor::GetObjectItemNum( DataIPShortCuts::cCurrentModuleObject, this->generatorListName );
@@ -205,9 +220,17 @@ namespace ElectricPowerService {
 			this->inverterObj = std::make_unique< DCtoACInverter >( this->inverterName );
 		}
 
+		if ( ! errorsFound && this->storagePresent ) {
+			// call storage constructor 
+			this->storageObj =  std::make_unique< ElectricStorage >( this->storageName );
+		}
 
+		if ( ! errorsFound && this->transformerPresent ) {
+			//call transformer constructor 
+			this->transformerObj = std::make_unique< ElectricTransformer >( this->transformerName );
+		
+		}
 
-	
 	}
 
 	void
@@ -302,7 +325,7 @@ namespace ElectricPowerService {
 		std::string const objectName
 	)
 	{
-		std::string const routineName = "DCtoACInverter constructor";
+		std::string const routineName = "DCtoACInverter constructor ";
 		int NumAlphas; // Number of elements in the alpha array
 		int NumNums; // Number of elements in the numeric array
 		int IOStat; // IO Status when calling get input subroutine
@@ -466,10 +489,220 @@ namespace ElectricPowerService {
 
 	ElectricStorage::ElectricStorage(
 		std::string const objectName
-		// need object type
 	)
 	{
-	
+		std::string const routineName = "ElectricStorage constructor ";
+		int NumAlphas; // Number of elements in the alpha array
+		int NumNums; // Number of elements in the numeric array
+		int IOStat; // IO Status when calling get input subroutine
+		bool errorsFound = false;
+		// if/when add object class name to input object this can be simplified. for now search all possible types 
+		bool foundStorage = false;
+		int testStorageIndex = 0;
+		int storageIDFObjectNum = 0;
+
+
+
+		testStorageIndex = InputProcessor::GetObjectItemNum("ElectricLoadCenter:Storage:Simple", objectName );
+		if ( testStorageIndex > 0 ) {
+			foundStorage = true;
+			storageIDFObjectNum = testStorageIndex;
+			DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Storage:Simple";
+			this->storageModelMode = simpleBucketStorage;
+		}
+
+		testStorageIndex = InputProcessor::GetObjectItemNum("ElectricLoadCenter:Storage:Battery", objectName );
+		if ( testStorageIndex > 0 ) {
+			foundStorage = true;
+			storageIDFObjectNum = testStorageIndex;
+			DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Storage:Battery";
+			this->storageModelMode = kiBaMBattery;
+		}
+
+		if ( foundStorage ) {
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, storageIDFObjectNum, DataIPShortCuts::cAlphaArgs, NumAlphas, DataIPShortCuts::rNumericArgs, NumNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+
+			this->name          = DataIPShortCuts::cAlphaArgs( 1 );
+			// how to verify names are unique across objects? add to GlobalNames?
+
+			if ( DataIPShortCuts::lAlphaFieldBlanks( 2 ) ) {
+				this->availSchedPtr = DataGlobals::ScheduleAlwaysOn;
+			} else {
+				this->availSchedPtr = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 2 ) );
+				if ( this->availSchedPtr == 0 ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 2 ) + " = " + DataIPShortCuts::cAlphaArgs( 2 ) );
+					errorsFound = true;
+				}
+			}
+
+			this->zoneNum = InputProcessor::FindItemInList( DataIPShortCuts::cAlphaArgs( 3 ), DataHeatBalance::Zone );
+			if ( this->zoneNum > 0 ) this->heatLossesDestination = zoneGains;
+			if ( this->zoneNum == 0 ) {
+				if ( DataIPShortCuts::lAlphaFieldBlanks( 3 ) ) {
+					this->heatLossesDestination = lostToOutside;
+				} else {
+					this->heatLossesDestination = lostToOutside;
+					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " = " + DataIPShortCuts::cAlphaArgs( 3 ) );
+					ShowContinueError( "Zone name not found. Storage heat losses will not be added to a zone" );
+					// continue with simulation but storage losses not sent to a zone.
+				}
+			}
+			this->zoneRadFract = DataIPShortCuts::rNumericArgs( 1 );
+
+			switch ( this->storageModelMode )
+			{
+			
+			case simpleBucketStorage: {
+				this->energeticEfficCharge    = DataIPShortCuts::rNumericArgs( 2 );
+				this->energeticEfficDischarge = DataIPShortCuts::rNumericArgs( 3 );
+				this->maxEnergyCapacity       = DataIPShortCuts::rNumericArgs( 4 );
+				this->maxPowerDraw            = DataIPShortCuts::rNumericArgs( 5 );
+				this->maxPowerStore           = DataIPShortCuts::rNumericArgs( 6 );
+				this->startingEnergyStored    = DataIPShortCuts::rNumericArgs( 7 );
+				SetupOutputVariable( "Electric Storage Charge State [J]", this->electEnergyinStorage, "System", "Average", this->name );
+				break;
+			}
+			
+			case kiBaMBattery: {
+				this->chargeCurveNum = CurveManager::GetCurveIndex( DataIPShortCuts::cAlphaArgs( 4 ) ); //voltage calculation for charging
+				if ( this->chargeCurveNum == 0 && ! DataIPShortCuts::lAlphaFieldBlanks( 4 ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + '=' + DataIPShortCuts::cAlphaArgs( 4 ) );
+					errorsFound = true;
+				} else if ( DataIPShortCuts::lAlphaFieldBlanks( 4 ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + " cannot be blank. But no entry found." );
+					errorsFound = true;
+				} else if ( ! InputProcessor::SameString( CurveManager::GetCurveType( this->chargeCurveNum ), "RectangularHyperbola2" ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + '=' + DataIPShortCuts::cAlphaArgs( 4 ) );
+					ShowContinueError( "Curve Type must be RectangularHyperbola2 but was " + CurveManager::GetCurveType( this->chargeCurveNum ) );
+					errorsFound = true;
+				}
+				this->dischargeCurveNum = CurveManager::GetCurveIndex( DataIPShortCuts::cAlphaArgs( 5 ) ); // voltage calculation for discharging
+				if ( this->dischargeCurveNum == 0 && ! DataIPShortCuts::lAlphaFieldBlanks( 5 ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 5 ) + '=' + DataIPShortCuts::cAlphaArgs( 5 ) );
+					errorsFound = true;
+				} else if ( DataIPShortCuts::lAlphaFieldBlanks( 5 ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 5 ) + " cannot be blank. But no entry found." );
+					errorsFound = true;
+				} else if ( ! InputProcessor::SameString( CurveManager::GetCurveType( this->dischargeCurveNum ), "RectangularHyperbola2" ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 5 ) + '=' + DataIPShortCuts::cAlphaArgs( 5 ) );
+					ShowContinueError( "Curve Type must be RectangularHyperbola2 but was " + CurveManager::GetCurveType( this->dischargeCurveNum ) );
+					errorsFound = true;
+				}
+
+				if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "Yes" ) ) {
+					this->lifeCalculation = batteryLifeCalculationYes;
+				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "No" ) ) {
+					this->lifeCalculation = batteryLifeCalculationNo;
+				} else {
+					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 6 ) + " = " + DataIPShortCuts::cAlphaArgs( 6 ) );
+					ShowContinueError( "Yes or No should be selected. Default value No is used to continue simulation" );
+					this->lifeCalculation = batteryLifeCalculationNo;
+				}
+
+				if ( this->lifeCalculation == batteryLifeCalculationYes ) {
+					this->lifeCurveNum = CurveManager::GetCurveIndex( DataIPShortCuts::cAlphaArgs( 7 ) ); //Battery life calculation
+					if ( this->lifeCurveNum == 0 && ! DataIPShortCuts::lAlphaFieldBlanks( 7 ) ) {
+						ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+						ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 7 ) + '=' + DataIPShortCuts::cAlphaArgs( 7 ) );
+						errorsFound = true;
+					} else if ( DataIPShortCuts::lAlphaFieldBlanks( 7 ) ) {
+						ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+						ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 7 ) + " cannot be blank when " + DataIPShortCuts::cAlphaArgs( 6 ) + " = Yes. But no entry found." );
+						errorsFound = true;
+					} else if ( ! InputProcessor::SameString( CurveManager::GetCurveType( this->lifeCurveNum ), "DoubleExponentialDecay" ) ) {
+						ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+						ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 7 ) + '=' + DataIPShortCuts::cAlphaArgs( 7 ) );
+						ShowContinueError( "Curve Type must be DoubleExponentialDecay but was " + CurveManager::GetCurveType( this->lifeCurveNum ) );
+						errorsFound = true;
+					}
+
+					this->cycleBinNum = DataIPShortCuts::rNumericArgs( 14 );
+
+					if ( ! errorsFound ) { // life cycle calculation for this battery, allocate arrays for degradation calculation
+					//humm zero base instead of 1?
+						this->b10.resize( this->maxRainflowArrayBounds + 2, 0.0 );
+						this->x0.resize( this->maxRainflowArrayBounds + 2, 0 );
+						this->nmb0.resize( this->cycleBinNum + 1, 0.0 );
+						this->oneNmb0.resize( this->cycleBinNum+ 1, 0.0 );
+					}
+				}
+
+				this->parallelNum          = DataIPShortCuts::rNumericArgs( 2 );
+				this->seriesNum            = DataIPShortCuts::rNumericArgs( 3 );
+				this->maxAhCapacity        = DataIPShortCuts::rNumericArgs( 4 );
+				this->startingSOC          = DataIPShortCuts::rNumericArgs( 5 );
+				this->availableFrac        = DataIPShortCuts::rNumericArgs( 6 );
+				this->chargeConversionRate = DataIPShortCuts::rNumericArgs( 7 );
+				this->chargedOCV           = DataIPShortCuts::rNumericArgs( 8 );
+				this->dischargedOCV        = DataIPShortCuts::rNumericArgs( 9 );
+				this->internalR            = DataIPShortCuts::rNumericArgs( 10 );
+				this->maxDischargeI        = DataIPShortCuts::rNumericArgs( 11 );
+				this->cutoffV              = DataIPShortCuts::rNumericArgs( 12 );
+				this->maxChargeRate        = DataIPShortCuts::rNumericArgs( 13 );
+
+				SetupOutputVariable( "Electric Storage Operating Mode Index []", this->storageMode, "System", "Average", this->name );
+				SetupOutputVariable( "Electric Storage Charge State [Ah]", this->absoluteSOC, "System", "Average", this->name );
+				SetupOutputVariable( "Electric Storage Charge Fraction []", this->fractionSOC, "System", "Average", this->name );
+				SetupOutputVariable( "Electric Storage Total Current [A]", this->batteryCurrent, "System", "Average", this->name );
+				SetupOutputVariable( "Electric Storage Total Voltage [V]", this->batteryVoltage, "System", "Average", this->name );
+
+				if ( this->lifeCalculation == batteryLifeCalculationYes ) {
+					SetupOutputVariable( "Electric Storage Degradation Fraction []", this->batteryDamage, "System", "Average", this->name );
+				}
+				break;
+			}
+
+			} // switch storage model type
+
+			SetupOutputVariable( "Electric Storage Charge Power [W]", this->storedPower, "System", "Average", this->name  );
+			SetupOutputVariable( "Electric Storage Charge Energy [J]", this->storedEnergy, "System", "Sum", this->name  );
+			SetupOutputVariable( "Electric Storage Production Decrement Energy [J]", this->decrementedEnergyStored, "System", "Sum", this->name , _, "ElectricityProduced", "ELECTRICSTORAGE", _, "Plant" );
+			SetupOutputVariable( "Electric Storage Discharge Power [W]", this->drawnPower, "System", "Average", this->name  );
+			SetupOutputVariable( "Electric Storage Discharge Energy [J]", this->drawnEnergy, "System", "Sum", this->name , _, "ElectricityProduced", "ELECTRICSTORAGE", _, "Plant" );
+			SetupOutputVariable( "Electric Storage Thermal Loss Rate [W]", this->thermLossRate, "System", "Average", this->name  );
+			SetupOutputVariable( "Electric Storage Thermal Loss Energy [J]", this->thermLossEnergy, "System", "Sum", this->name  );
+			if ( DataGlobals::AnyEnergyManagementSystemInModel ) {
+				if ( this->storageModelMode == simpleBucketStorage ) {
+					SetupEMSInternalVariable( "Electrical Storage Maximum Capacity", this->name , "[J]", this->maxEnergyCapacity );
+				} else if ( this->storageModelMode == kiBaMBattery ) {
+					SetupEMSInternalVariable( "Electrical Storage Maximum Capacity", this->name , "[Ah]", this->maxAhCapacity );
+				}
+				SetupEMSActuator( "Electrical Storage", this->name , "Power Draw Rate", "[W]", this->eMSOverridePelFromStorage, this->eMSValuePelFromStorage );
+				SetupEMSActuator( "Electrical Storage", this->name , "Power Charge Rate", "[W]", this->eMSOverridePelIntoStorage, this->eMSValuePelIntoStorage );
+			}
+
+			if ( this->zoneNum > 0 ) {
+				switch ( this->storageModelMode )
+				{
+				case simpleBucketStorage: {
+					SetupZoneInternalGain( this->zoneNum, "ElectricLoadCenter:Storage:Simple", this->name , DataHeatBalance::IntGainTypeOf_ElectricLoadCenterStorageSimple, this->qdotConvZone, _, this->qdotRadZone );
+					break;
+				}
+				case kiBaMBattery: {
+					SetupZoneInternalGain( this->zoneNum, "ElectricLoadCenter:Storage:Battery", this->name , DataHeatBalance::IntGainTypeOf_ElectricLoadCenterStorageBattery, this->qdotConvZone, _, this->qdotRadZone );
+					break;
+				}
+
+				} // switch storage model type
+
+			}
+		
+		} else { // storage not found
+			ShowSevereError( routineName + " did not find storage name = " + objectName);
+			errorsFound = true;
+		}
+		if ( errorsFound ) {
+			ShowFatalError( routineName + "Preceding errors terminate program." );
+		}
 	}
 
 
