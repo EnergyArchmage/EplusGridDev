@@ -55,7 +55,7 @@ namespace ElectricPowerService {
 	if ( this->numLoadCenters > 0 ){
 		for ( auto iLoadCenterNum = 1; iLoadCenterNum <= this->numLoadCenters; ++iLoadCenterNum ){
 
-			this->elecLoadCenterObjs.emplace_back( iLoadCenterNum );
+			this->elecLoadCenterObjs.emplace_back( std::make_unique <ElectPowerLoadCenter > ( iLoadCenterNum) );
 		}
 	
 	}
@@ -80,9 +80,35 @@ namespace ElectricPowerService {
 	}
 
 	ElectPowerLoadCenter::ElectPowerLoadCenter(
-		int const objectNum
+		int objectNum
 	)
 	{
+		// initialize 
+		this->name="";
+		this->generatorListName="";
+		this->genOperationScheme = genOpSchemeNotYetSet ;
+		this->demandMeterPtr = 0;
+		this->numGenerators = 0;
+		this->demandLimit = 0.0;
+		this->trackSchedPtr = 0;
+		this->bussType = bussNotYetSet;
+		this->inverterPresent = false;
+		this->inverterModelNum = 0;
+		this->dCElectricityProd = 0.0;
+		this->dCElectProdRate = 0.0;
+		this->dCpowerConditionLosses = 0.0;
+		this->storagePresent = false;
+		this->storageModelNum = 0;
+		this->transformerPresent = false;
+		this->transformerModelNum = 0;
+		this->electricityProd = 0.0;
+		this->electProdRate = 0.0;
+		this->thermalProd = 0.0;
+		this->thermalProdRate = 0.0;
+		this->totalPowerRequest = 0.0;
+		this->totalThermalPowerRequest = 0.0;
+		this->electDemand = 0.0;
+
 		std::string const routineName = "ElectPowerLoadCenter constructor ";
 		int numAlphas; // Number of elements in the alpha array
 		int numNums; // Number of elements in the numeric array
@@ -207,7 +233,7 @@ namespace ElectricPowerService {
 			int alphaCount = 2;
 			for ( auto genCount = 1; genCount <= this->numGenerators; ++genCount) {
 				// call constructor in place
-				this->elecGenCntrlObj.emplace_back( GeneratorController( DataIPShortCuts::cAlphaArgs( alphaCount ), DataIPShortCuts::cAlphaArgs( alphaCount + 1 ), DataIPShortCuts::rNumericArgs( 2 * genCount - 1 ), DataIPShortCuts::cAlphaArgs( alphaCount + 2 ), DataIPShortCuts::rNumericArgs( 2 * genCount) ) );
+				this->elecGenCntrlObj.emplace_back( std::make_unique < GeneratorController >( DataIPShortCuts::cAlphaArgs( alphaCount ), DataIPShortCuts::cAlphaArgs( alphaCount + 1 ), DataIPShortCuts::rNumericArgs( 2 * genCount - 1 ), DataIPShortCuts::cAlphaArgs( alphaCount + 2 ), DataIPShortCuts::rNumericArgs( 2 * genCount) ) );
 				++alphaCount;
 				++alphaCount;
 				++alphaCount;
@@ -218,17 +244,21 @@ namespace ElectricPowerService {
 
 		if ( ! errorsFound && this->inverterPresent ) {
 			// call inverter constructor
-			this->inverterObj = std::make_unique< DCtoACInverter >( this->inverterName );
+			std::string thisInverterName = this->inverterName;
+			//this->inverterObj = std::unique_ptr< DCtoACInverter >( new DCtoACInverter( thisInverterName ) );
+
+			this->inverterObj = std::make_unique< DCtoACInverter >  ( thisInverterName ) ;
+			//this->inverterObj = new DCtoACInverter ( thisInverterName ) ;
 		}
 
 		if ( ! errorsFound && this->storagePresent ) {
 			// call storage constructor 
-			this->storageObj =  std::make_unique< ElectricStorage >( this->storageName );
+			this->storageObj =  std::make_unique< ElectricStorage >(  this->storageName  );
 		}
 
 		if ( ! errorsFound && this->transformerPresent ) {
 			//call transformer constructor 
-			this->transformerObj = std::make_unique< ElectricTransformer >( this->transformerName );
+			this->transformerObj = std::make_unique< ElectricTransformer >( this->transformerName  );
 		
 		}
 
@@ -251,11 +281,11 @@ namespace ElectricPowerService {
 	}
 
 	GeneratorController::GeneratorController(
-		std::string const objectName,
-		std::string const objectType,
-		Real64 const ratedElecPowerOutput,
-		std::string const availSchedName,
-		Real64 const thermalToElectRatio
+		std::string objectName,
+		std::string objectType,
+		Real64 ratedElecPowerOutput,
+		std::string availSchedName,
+		Real64 thermalToElectRatio
 	)
 	{
 		std::string const routineName = "GeneratorController constructor ";
@@ -323,9 +353,37 @@ namespace ElectricPowerService {
 	}
 
 	DCtoACInverter::DCtoACInverter(
-		std::string const objectName
+		std::string objectName
 	)
 	{
+		//initialize
+		this->modelType = notYetSet;
+		this->availSchedPtr = 0;
+		this->heatLossesDestination = heatLossNotDetermined;
+		this->zoneNum = 0;
+		this->zoneRadFract = 0.0;
+		this->nightTareLossPower = 0.0;
+		this->nominalVoltage = 0.0;
+		this->nomVoltEfficiencyARR.resize( 6, 0.0 );
+		this->curveNum = 0;
+		this->ratedPower = 0.0;
+		this->minPower = 0.0;
+		this->maxPower = 0.0;
+		this->minEfficiency = 0.0;
+		this->maxEfficiency = 0.0;
+		this->standbyPower = 0.0;
+		this->efficiency = 0.0;
+		this->dCPowerIn = 0.0;
+		this->aCPowerOut = 0.0;
+		this->dCEnergyIn = 0.0;
+		this->aCEnergyOut = 0.0;
+		this->thermLossRate = 0.0;
+		this->thermLossEnergy = 0.0;
+		this->qdotConvZone = 0.0;
+		this->qdotRadZone = 0.0;
+		this->ancillACuseRate = 0.0;
+		this->ancillACuseEnergy = 0.0;
+
 		std::string const routineName = "DCtoACInverter constructor ";
 		int NumAlphas; // Number of elements in the alpha array
 		int NumNums; // Number of elements in the numeric array
@@ -489,9 +547,72 @@ namespace ElectricPowerService {
 
 
 	ElectricStorage::ElectricStorage(
-		std::string const objectName
+		std::string objectName
 	)
 	{
+		//initialize
+		this->storageModelMode = storageTypeNotSet;
+		this->availSchedPtr = 0;
+		this->heatLossesDestination = heatLossNotDetermined;
+		this->zoneNum = 0;
+		this->zoneRadFract = 0.0;
+		this->startingEnergyStored = 0.0;
+		this->energeticEfficCharge = 0.0;
+		this->energeticEfficDischarge = 0.0;
+		this->maxPowerDraw = 0.0;
+		this->maxPowerStore = 0.0;
+		this->maxEnergyCapacity = 0.0;
+		this->parallelNum = 0;
+		this->seriesNum = 0;
+		this->chargeCurveNum = 0;
+		this->dischargeCurveNum = 0;
+		this->cycleBinNum = 0;
+		this->startingSOC = 0.0;
+		this->maxAhCapacity = 0.0;
+		this->availableFrac = 0.0;
+		this->chargeConversionRate = 0.0;
+		this->chargedOCV = 0.0;
+		this->dischargedOCV = 0.0;
+		this->internalR = 0.0;
+		this->maxDischargeI = 0.0;
+		this->cutoffV = 0.0;
+		this->maxChargeRate = 0.0;
+		this->lifeCalculation = degredationNotSet;
+		this->lifeCurveNum = 0;
+		this->thisTimeStepStateOfCharge = 0.0;
+		this->lastTimeStepStateOfCharge = 0.0;
+		this->pelNeedFromStorage = 0.0;
+		this->pelFromStorage = 0.0;
+		this->eMSOverridePelFromStorage = false;
+		this->eMSValuePelFromStorage = 0.0;
+		this->pelIntoStorage = 0.0;
+		this->eMSOverridePelIntoStorage = false;
+		this->eMSValuePelIntoStorage = 0.0;
+		this->qdotConvZone = 0.0;
+		this->qdotRadZone = 0.0;
+		this->timeElapsed = 0.0;
+		this->thisTimeStepAvailable = 0.0;
+		this->thisTimeStepBound = 0.0;
+		this->lastTimeStepAvailable = 0.0;
+		this->lastTimeStepBound = 0.0;
+		this->lastTwoTimeStepAvailable = 0.0;
+		this->lastTwoTimeStepBound = 0.0;
+		this->count0 = 0;
+		this->electEnergyinStorage = 0.0;
+		this->storedPower = 0.0;
+		this->storedEnergy = 0.0;
+		this->decrementedEnergyStored = 0.0;
+		this->drawnPower = 0.0;
+		this->drawnEnergy = 0.0;
+		this->thermLossRate = 0.0;
+		this->thermLossEnergy = 0.0;
+		this->storageMode = 0;
+		this->absoluteSOC = 0.0;
+		this->fractionSOC = 0.0;
+		this->batteryCurrent = 0.0;
+		this->batteryVoltage = 0.0;
+		this->batteryDamage = 0.0;
+
 		std::string const routineName = "ElectricStorage constructor ";
 		int NumAlphas; // Number of elements in the alpha array
 		int NumNums; // Number of elements in the numeric array
@@ -501,8 +622,6 @@ namespace ElectricPowerService {
 		bool foundStorage = false;
 		int testStorageIndex = 0;
 		int storageIDFObjectNum = 0;
-
-
 
 		testStorageIndex = InputProcessor::GetObjectItemNum("ElectricLoadCenter:Storage:Simple", objectName );
 		if ( testStorageIndex > 0 ) {
@@ -771,10 +890,45 @@ namespace ElectricPowerService {
 
 
 	ElectricTransformer::ElectricTransformer(
-		std::string const objectName
+		std::string objectName
 	)
 	{
-	
+		this->availSchedPtr = 0;
+		this->usageMode = useNotYetSet;
+		this->heatLossesDestination = heatLossNotDetermined;
+		this->zoneNum = 0;
+		this->zoneRadFrac = 0.0;
+		this->ratedCapacity = 0.0;
+		this->phase = 0;
+		this->factorTempCoeff = 0.0;
+		this->tempRise = 0.0;
+		this->eddyFrac = 0.0;
+		this->performanceInputMode = perfInputMethodNotSet;
+		this->ratedEfficiency = 0.0;
+		this->ratedPUL = 0.0;
+		this->ratedTemp = 0.0;
+		this->maxPUL = 0.0;
+		this->considerLosses = true;
+		this->ratedNL = 0.0;
+		this->ratedLL = 0.0;
+		this->loadCenterNum = 0;
+		this->overloadErrorIndex = 0;
+		this->efficiency = 0.0;
+		this->powerIn = 0.0;
+		this->energyIn = 0.0;
+		this->powerOut = 0.0;
+		this->energyOut = 0.0;
+		this->noLoadLossRate = 0.0;
+		this->noLoadLossEnergy = 0.0;
+		this->loadLossRate = 0.0;
+		this->loadLossEnergy = 0.0;
+		this->thermalLossRate = 0.0;
+		this->thermalLossEnergy = 0.0;
+		this->elecUseUtility = 0.0;
+		this->elecProducedCoGen = 0.0;
+		this->qdotConvZone = 0.0;
+		this->qdotRadZone = 0.0;
+				
 		std::string const routineName = "ElectricTransformer constructor ";
 		int numAlphas; // Number of elements in the alpha array
 		int numNums; // Number of elements in the numeric array
@@ -946,7 +1100,7 @@ namespace ElectricPowerService {
 	ElectricTransformer::setupMeterIndices()
 	{
 		if (this->usageMode == powerInFromGrid ) {
-			for ( auto meterNum = 1; meterNum <= this->wiredMeterNames.size; ++meterNum ) {
+			for ( auto meterNum = 1; meterNum <= this->wiredMeterNames.size(); ++meterNum ) {
 
 				this->wiredMeterPtrs[ meterNum ] = GetMeterIndex( this->wiredMeterNames[ meterNum ] );
 

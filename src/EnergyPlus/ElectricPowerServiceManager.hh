@@ -21,7 +21,7 @@ namespace EnergyPlus {
 namespace ElectricPowerService {
 
 	enum thermalLossDestinationEnum {
-		notDetermined,
+		heatLossNotDetermined,
 		zoneGains,
 		lostToOutside
 	};
@@ -33,7 +33,7 @@ private: // Creation
 		DCtoACInverter() :
 			modelType( notYetSet ),
 			availSchedPtr( 0 ),
-			heatLossesDestination( notDetermined ),
+			heatLossesDestination( heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
 			nightTareLossPower( 0.0 ),
@@ -59,11 +59,23 @@ private: // Creation
 			ancillACuseEnergy( 0.0 )
 		{}
 
+	// Copy Constructor
+	DCtoACInverter( DCtoACInverter const & ) = default;
+
+	// Move Constructor
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || (_MSC_VER>=1900)
+	DCtoACInverter( DCtoACInverter && ) = default;
+#endif
+
 public: // Methods
 
+	// Destructor
+	~DCtoACInverter()
+	{}
 
+	// Constructor
 	DCtoACInverter(
-		std::string const objectName
+		std::string objectName
 	);
 
 	void
@@ -123,7 +135,7 @@ private: // Creation
 			maxRainflowArrayInc( 100 ),
 			storageModelMode( storageTypeNotSet ),
 			availSchedPtr( 0 ),
-			heatLossesDestination( notDetermined ),
+			heatLossesDestination( heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
 			startingEnergyStored( 0.0 ),
@@ -184,10 +196,24 @@ private: // Creation
 			batteryDamage( 0.0 )
 		{}
 
+
+	// Copy Constructor
+	ElectricStorage( ElectricStorage const & ) = default;
+
+	// Move Constructor
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || (_MSC_VER>=1900)
+	ElectricStorage( ElectricStorage && ) = default;
+#endif
+
 public: //methods
 
+	// Destructor
+	~ElectricStorage()
+	{}
+	
+	// Constructor
 	ElectricStorage(
-		std::string const objectName
+		std::string objectName
 		// need object type
 	);
 
@@ -336,7 +362,7 @@ private: // Creation
 		ElectricTransformer() :
 			availSchedPtr( 0 ),
 			usageMode( useNotYetSet ),
-			heatLossesDestination( notDetermined ),
+			heatLossesDestination( heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFrac( 0.0 ),
 			ratedCapacity( 0.0 ),
@@ -371,11 +397,25 @@ private: // Creation
 			qdotRadZone( 0.0 )
 		{}
 
+	// Copy Constructor
+	ElectricTransformer( ElectricTransformer const & ) = default;
+
+	// Move Constructor
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || (_MSC_VER>=1900)
+	ElectricTransformer( ElectricTransformer && ) = default;
+#endif
+
+
+
 public: //methods
 
-	// constructor
+	// Destructor
+	~ElectricTransformer()
+	{}
+
+	// Constructor
 	ElectricTransformer(
-		std::string const objectName
+		std::string objectName
 	);
 
 	void
@@ -482,14 +522,26 @@ private: // Creation
 		thermalProdRate( 0.0 )
 	{}
 
-public: // Methods
+	// Copy Constructor
+	GeneratorController( GeneratorController const & ) = default;
 
+	// Move Constructor
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || (_MSC_VER>=1900)
+	GeneratorController( GeneratorController && ) = default;
+#endif
+
+public: // Methods
+	// Destructor
+	~GeneratorController()
+	{}
+
+	// Constructor
 	GeneratorController(
-		std::string const objectName,
-		std::string const objectType,
-		Real64 const ratedElecPowerOutput,
-		std::string const availSchedName,
-		Real64 const thermalToElectRatio
+		std::string objectName,
+		std::string objectType,
+		Real64 ratedElecPowerOutput,
+		std::string availSchedName,
+		Real64 thermalToElectRatio
 	);
 
 	void
@@ -573,13 +625,24 @@ private: // Creation
 		electDemand( 0.0 )
 	{}
 
+	// Copy Constructor
+	ElectPowerLoadCenter( ElectPowerLoadCenter const & ) = default;
+
+	// Move Constructor
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || (_MSC_VER>=1900)
+	ElectPowerLoadCenter( ElectPowerLoadCenter && ) = default;
+#endif
 
 
 public: // Methods
 
+	// Destructor
+	~ElectPowerLoadCenter()
+	{}
 
+	// Constructor
 	ElectPowerLoadCenter(
-		int const objectNum
+		int objectNum
 	);
 
 private: //Methods
@@ -624,7 +687,7 @@ private: // data
 	int demandMeterPtr; // "pointer" to Meter for electrical Demand to meet
 	std::string generationMeterName; // Name of Generated Energy Meter for "on demand" operation
 	int numGenerators; // Number of Generators
-	std::vector < GeneratorController > elecGenCntrlObj; // generator controller objects
+	std::vector < std::unique_ptr <GeneratorController> > elecGenCntrlObj; // generator controller objects
 	Real64 demandLimit; // Demand Limit in Watts(W) which the generator will operate above
 	int trackSchedPtr; // "pointer" to schedule for electrical demand to meet.
 	electricBussTypeEnum bussType; // is this load center powered by AC or DC generators
@@ -693,9 +756,19 @@ private: // Creation
 			elecProducedWTRate( 0.0 ),
 			elecProducedStorageRate( 0.0 )
 		{}
+	// Copy Constructor
+	ElectricPowerServiceManager( ElectricPowerServiceManager const & ) = default;
+
+	// Move Constructor
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || (_MSC_VER>=1900)
+	ElectricPowerServiceManager( ElectricPowerServiceManager && ) = default;
+#endif
 
 public: // Methods
 
+	// Destructor
+	~ElectricPowerServiceManager()
+	{}
 
 	void
 	manageElectricLoadCenters(
@@ -729,7 +802,7 @@ private: // data
 		int elecProducedWTIndex;
 		int elecProducedStorageIndex;
 		std::string name;
-		std::vector< ElectPowerLoadCenter > elecLoadCenterObjs;
+		std::vector< std::unique_ptr < ElectPowerLoadCenter > > elecLoadCenterObjs;
 		bool facilityTransformerPresent;
 		std::string facilityTransformerName; // hold name for verificaton and error messages
 		std::unique_ptr < ElectricTransformer > facilityTransformerObj;
