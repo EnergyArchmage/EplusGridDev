@@ -49,6 +49,7 @@ namespace ElectricPowerService {
 	void
 	ElectricPowerServiceManager::getPowerManagerInput()
 	{
+	std::string const routineName = "ElectricPowerServiceManager  getPowerManagerInput ";
 
 	this->numLoadCenters = InputProcessor::GetNumObjectsFound( "ElectricLoadCenter:Distribution" );
 
@@ -58,8 +59,41 @@ namespace ElectricPowerService {
 			this->elecLoadCenterObjs.emplace_back( std::make_unique <ElectPowerLoadCenter > ( iLoadCenterNum) );
 		}
 	
+	} else {
+		// check that the distribution object isn't just missing but is needed. #issue 4639
+	
 	}
 
+	// see if there is a transformer of the type powerInFromGrid
+	this->numTransformers = InputProcessor::GetNumObjectsFound( "ElectricLoadCenter:Transformer" );
+
+	if ( this->numTransformers > 0 ) {
+		int numAlphas; // Number of elements in the alpha array
+		int numNums; // Number of elements in the numeric array
+		int iOStat; // IO Status when calling get input subroutine
+		int facilityTransformerIDFObjNum = 0;
+		bool foundInFromGridTransformer = false;
+		DataIPShortCuts::cCurrentModuleObject =  "ElectricLoadCenter:Transformer";
+		for ( auto loopTransformer = 1; loopTransformer <= this->numTransformers; ++loopTransformer) {
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, storageIDFObjectNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, iOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+
+			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "PowerInFromGrid" ) ) {
+				if ( ! foundInFromGridTransformer ) {
+					foundInFromGridTransformer = true;
+					facilityTransformerIDFObjNum = loopTransformer;
+				} else {
+					// should only have one transformer in input that is PowerInFromGrid
+					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " = " + DataIPShortCuts::cAlphaArgs( 3 ) );
+					ShowContinueError("Only one transformer with Usage PowerInFromGrid can be used, first one in input file will be used and the simulation continues...");
+				}
+			}
+		}
+		if ( foundInFromGridTransformer ) {
+		
+		}
+	
+	}
 
 	}
 
@@ -71,6 +105,8 @@ namespace ElectricPowerService {
 		elecProducedPVIndex = EnergyPlus::GetMeterIndex( "Photovoltaic:ElectricityProduced" );
 		elecProducedWTIndex = EnergyPlus::GetMeterIndex( "WindTurbine:ElectricityProduced" );
 		elecProducedStorageIndex = EnergyPlus::GetMeterIndex( "ElectricStorage:ElectricityProduced" );
+
+
 	}
 
 	void
@@ -614,9 +650,9 @@ namespace ElectricPowerService {
 		this->batteryDamage = 0.0;
 
 		std::string const routineName = "ElectricStorage constructor ";
-		int NumAlphas; // Number of elements in the alpha array
-		int NumNums; // Number of elements in the numeric array
-		int IOStat; // IO Status when calling get input subroutine
+		int numAlphas; // Number of elements in the alpha array
+		int numNums; // Number of elements in the numeric array
+		int iOStat; // IO Status when calling get input subroutine
 		bool errorsFound = false;
 		// if/when add object class name to input object this can be simplified. for now search all possible types 
 		bool foundStorage = false;
@@ -640,7 +676,7 @@ namespace ElectricPowerService {
 		}
 
 		if ( foundStorage ) {
-			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, storageIDFObjectNum, DataIPShortCuts::cAlphaArgs, NumAlphas, DataIPShortCuts::rNumericArgs, NumNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, storageIDFObjectNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, iOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
 
 			this->name          = DataIPShortCuts::cAlphaArgs( 1 );
 			// how to verify names are unique across objects? add to GlobalNames?
