@@ -18,6 +18,7 @@
 #include <DataHeatBalance.hh>
 #include <HeatBalanceInternalHeatGains.hh>
 #include <EMSManager.hh>
+#include <General.hh>
 
 namespace EnergyPlus {
 
@@ -774,6 +775,165 @@ namespace ElectricPowerService {
 	)
 	{
 	
+		std::string const routineName = "ElectricTransformer constructor ";
+		int numAlphas; // Number of elements in the alpha array
+		int numNums; // Number of elements in the numeric array
+		int IOStat; // IO Status when calling get input subroutine
+		bool errorsFound = false;
+		int transformerIDFObjectNum = 0;
+		DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Transformer";
+
+		transformerIDFObjectNum = InputProcessor::GetObjectItemNum( "ElectricLoadCenter:Transformer",  objectName );
+		if ( transformerIDFObjectNum > 0 ) {
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, transformerIDFObjectNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+			this->name  = DataIPShortCuts::cAlphaArgs( 1 );
+			// how to verify names are unique across objects? add to GlobalNames?
+			if ( DataIPShortCuts::lAlphaFieldBlanks( 2 ) ) {
+				this->availSchedPtr = DataGlobals::ScheduleAlwaysOn;
+			} else {
+				this->availSchedPtr = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 2 ) );
+				if ( this->availSchedPtr == 0 ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 2 ) + " = " + DataIPShortCuts::cAlphaArgs( 2 ) );
+					errorsFound = true;
+				}
+			}
+
+			if ( DataIPShortCuts::lAlphaFieldBlanks( 3 ) ) {
+				this->usageMode = powerInFromGrid; //default
+			} else if ( InputProcessor::SameString(DataIPShortCuts::cAlphaArgs( 3 ), "PowerInFromGrid" ) ) {
+				this->usageMode = powerInFromGrid;
+			} else if ( InputProcessor::SameString(DataIPShortCuts::cAlphaArgs( 3 ), "PowerOutFromOnsiteGeneration" ) ) {
+				this->usageMode = powerOutFromBldg;
+			} else {
+					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " = " + DataIPShortCuts::cAlphaArgs( 3 ) );
+					errorsFound = true;
+			}
+
+			this->zoneNum = InputProcessor::FindItemInList( DataIPShortCuts::cAlphaArgs( 4 ), DataHeatBalance::Zone );
+			if ( this->zoneNum > 0 ) this->heatLossesDestination = zoneGains;
+			if ( this->zoneNum == 0 ) {
+				if ( DataIPShortCuts::lAlphaFieldBlanks( 4 ) ) {
+					this->heatLossesDestination = lostToOutside;
+				} else {
+					this->heatLossesDestination = lostToOutside;
+					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + " = " + DataIPShortCuts::cAlphaArgs( 4 ) );
+					ShowContinueError( "Zone name not found. Transformer heat losses will not be added to a zone" );
+					// continue with simulation but storage losses not sent to a zone.
+				}
+			}
+			this->zoneRadFrac   = DataIPShortCuts::rNumericArgs( 1 );
+			this->ratedCapacity = DataIPShortCuts::rNumericArgs( 2 );
+			this->phase         = DataIPShortCuts::rNumericArgs( 3 );
+
+			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 5 ), "Copper" ) ) {
+				this->factorTempCoeff = 234.5;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 5 ), "Aluminum" ) ) {
+				this->factorTempCoeff = 225.0;
+			} else {
+				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+				ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 5 ) + " = " + DataIPShortCuts::cAlphaArgs( 5 ) );
+				errorsFound = true;
+			}
+			this->tempRise = DataIPShortCuts::rNumericArgs( 4 );
+			this->eddyFrac = DataIPShortCuts::rNumericArgs( 5 );
+
+			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "RatedLosses" ) ) {
+				this->performanceInputMode = lossesMethod;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "NominalEfficiency" ) ) {
+				this->performanceInputMode = efficiencyMethod;
+			} else {
+				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" +  DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+				ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 6 ) + " = " + DataIPShortCuts::cAlphaArgs( 6 ) );
+				errorsFound = true;
+			}
+
+			this->ratedNL         = DataIPShortCuts::rNumericArgs( 6 );
+			this->ratedLL         = DataIPShortCuts::rNumericArgs( 7 );
+			this->ratedEfficiency = DataIPShortCuts::rNumericArgs( 8 );
+			this->ratedPUL        = DataIPShortCuts::rNumericArgs( 9 );
+			this->ratedTemp       = DataIPShortCuts::rNumericArgs( 10 );
+			this->maxPUL          = DataIPShortCuts::rNumericArgs( 11 );
+			//Check the input for MaxPUL if the performance input method is EfficiencyMethod
+			if ( this->performanceInputMode == efficiencyMethod ) {
+				if ( DataIPShortCuts::lNumericFieldBlanks( 11 ) ) {
+					this->maxPUL = this->ratedPUL;
+				} else if ( this->maxPUL <= 0 || this->maxPUL > 1 ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cNumericFieldNames( 11 ) + "=[" + General::RoundSigDigits( DataIPShortCuts::rNumericArgs( 11 ), 3 ) + "]." );
+					ShowContinueError( "Entered value must be > 0 and <= 1." );
+					errorsFound = true;
+				}
+			}
+			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 7 ), "Yes" ) ) {
+				this->considerLosses = true;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 7 ), "No" ) ) {
+				this->considerLosses = false;
+			} else {
+				if ( this->usageMode == powerInFromGrid ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 7 ) + " = " + DataIPShortCuts::cAlphaArgs( 7 ) );
+					errorsFound = true;
+				}
+			}
+
+			int numAlphaBeforeMeter = 7;
+			int numWiredMeters = numAlphas - numAlphaBeforeMeter;
+
+			if ( this->usageMode == powerInFromGrid ) {
+
+				//Provide warning if no meter is wired to a transformer used to get power from the grid
+				if ( numWiredMeters <= 0 ) {
+					ShowWarningError( routineName + "ElectricLoadCenter:Transformer=\"" + this->name + "\":" );
+					ShowContinueError( "ISOLATED Transformer: No meter wired to a transformer used to input power from grid" );
+				}
+
+				this->wiredMeterNames.resize( numWiredMeters, "" );
+				this->wiredMeterPtrs.resize( numWiredMeters, 0 );
+				this->specialMeter.resize( numWiredMeters, false );
+
+				//Meter check deferred because they may have not been "loaded" yet,
+				for ( auto loopCount = 1; loopCount <= numWiredMeters; ++loopCount ) {
+					this->wiredMeterNames[ loopCount ] = InputProcessor::MakeUPPERCase( DataIPShortCuts::cAlphaArgs( loopCount + numAlphaBeforeMeter ) );
+					//Assign SpecialMeter as TRUE if the meter name is Electricity:Facility or Electricity:HVAC
+					if ( InputProcessor::SameString( this->wiredMeterNames[ loopCount ], "Electricity:Facility" ) || InputProcessor::SameString( this->wiredMeterNames[ loopCount ], "Electricity:HVAC" ) ) {
+						this->specialMeter[ loopCount ] = true;
+					} else {
+						this->specialMeter[ loopCount ] = false;
+					}
+				}
+			}
+			SetupOutputVariable( "Transformer Efficiency []", this->efficiency, "System", "Average", this->name );
+			SetupOutputVariable( "Transformer Input Electric Power [W]", this->powerIn, "System", "Average", this->name );
+			SetupOutputVariable( "Transformer Input Electric Energy [J]", this->energyIn, "System", "Sum", this->name );
+			SetupOutputVariable( "Transformer Output Electric Power [W]", this->powerOut, "System", "Average", this->name );
+			SetupOutputVariable( "Transformer Output Electric Energy [J]", this->energyOut, "System", "Sum", this->name );
+			SetupOutputVariable( "Transformer No Load Loss Rate [W]", this->noLoadLossRate, "System", "Average", this->name );
+			SetupOutputVariable( "Transformer No Load Loss Energy [J]", this->noLoadLossEnergy, "System", "Sum", this->name );
+			SetupOutputVariable( "Transformer Load Loss Rate [W]", this->loadLossRate, "System", "Average", this->name );
+			SetupOutputVariable( "Transformer Load Loss Energy [J]", this->loadLossEnergy, "System", "Sum", this->name );
+			SetupOutputVariable( "Transformer Thermal Loss Rate [W]", this->thermalLossRate, "System", "Average", this->name );
+			SetupOutputVariable( "Transformer Thermal Loss Energy [J]", this->thermalLossEnergy, "System", "Sum", this->name );
+			SetupOutputVariable( "Transformer Distribution Electric Loss Energy [J]", this->elecUseUtility, "System", "Sum", this->name, _, "Electricity", "ExteriorEquipment", "Transformer", "System" );
+			SetupOutputVariable( "Transformer Cogeneration Electric Loss Energy [J]", this->elecProducedCoGen, "System", "Sum", this->name, _, "ElectricityProduced", "COGENERATION", _, "System" );
+
+			if ( this->zoneNum > 0 ) {
+				SetupZoneInternalGain( this->zoneNum, "ElectricLoadCenter:Transformer", this->name, DataHeatBalance::IntGainTypeOf_ElectricLoadCenterTransformer, this->qdotConvZone, _, this->qdotRadZone );
+			}
+
+		} else {
+			ShowSevereError( routineName + " did not find transformer name = " + objectName);
+			errorsFound = true;
+		
+		
+		}
+
+		if ( errorsFound ) {
+			ShowFatalError( routineName + "Preceding errors terminate program." );
+		}
+
 	}
 
 	void

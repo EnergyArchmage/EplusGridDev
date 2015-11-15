@@ -344,7 +344,7 @@ private: // Creation
 			factorTempCoeff( 0.0 ),
 			tempRise( 0.0 ),
 			eddyFrac( 0.0 ),
-			performanceInputMode( 0 ),
+			performanceInputMode( perfInputMethodNotSet ),
 			ratedEfficiency( 0.0 ),
 			ratedPUL( 0.0 ),
 			ratedTemp( 0.0 ),
@@ -394,15 +394,21 @@ private: //methods
 
 private: //data
 
-	enum transformerUse {
+	enum transformerUseEnum {
 		useNotYetSet,
 		powerInFromGrid,
 		powerOutFromBldg
 	};
+	enum transformerPerformanceInputEnum {
+		perfInputMethodNotSet,
+		lossesMethod,
+		efficiencyMethod
+	
+	};
 
 	std::string name; // user identifier
 	int availSchedPtr; // availability schedule index.
-	transformerUse usageMode; // mode for transformer usage
+	transformerUseEnum usageMode; // mode for transformer usage
 	thermalLossDestinationEnum heatLossesDestination; // mode for where thermal losses go
 	int zoneNum; // destination zone for heat losses from inverter.
 	Real64 zoneRadFrac; // radiative fraction for thermal losses to zone
@@ -411,7 +417,7 @@ private: //data
 	Real64 factorTempCoeff; // thermal coefficient of resistance for winding material
 	Real64 tempRise; // full load temperature rise [C]
 	Real64 eddyFrac; // fraction of eddy current losses []
-	int performanceInputMode; // performance input method
+	transformerPerformanceInputEnum performanceInputMode; // performance input method
 	Real64 ratedEfficiency; // nameplate efficiency []
 	Real64 ratedPUL; // per unit load for nameplate efficiency []
 	Real64 ratedTemp; // reference temperature for nameplate efficiency [C]
