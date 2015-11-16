@@ -81,6 +81,9 @@ public: // Methods
 	void
 	manageInverter( int const LoadCenterNum ); // Load Center number counter
 
+	void
+	reinitAtBeginEnvironment();
+
 private: //Methods
 	void
 	figureInverterZoneGains();
@@ -123,8 +126,6 @@ private: // data
 		Real64 ancillACuseEnergy;
 
 }; //DCtoACInverter
-
-
 
 class ElectricStorage
 {
@@ -223,6 +224,9 @@ public: //methods
 		Real64 & StorageDrawnPower, // Electric Power Draw Rate from storage units
 		Real64 & StorageStoredPower // Electric Power Store Rate from storage units
 	);
+
+	void
+	reinitAtBeginEnvironment();
 
 private: //methods
 	void
@@ -360,6 +364,7 @@ class ElectricTransformer
 private: // Creation
 	// Default Constructor
 		ElectricTransformer() :
+			myOneTimeFlag( true ),
 			availSchedPtr( 0 ),
 			usageMode( useNotYetSet ),
 			heatLossesDestination( heatLossNotDetermined ),
@@ -378,7 +383,7 @@ private: // Creation
 			considerLosses( true ),
 			ratedNL( 0.0 ),
 			ratedLL( 0.0 ),
-			loadCenterNum( 0 ),
+			numLoadCenters( 0 ),
 			overloadErrorIndex( 0 ),
 			efficiency( 0.0 ),
 			powerIn( 0.0 ),
@@ -419,10 +424,24 @@ public: //methods
 	);
 
 	void
-	manageTransformers();
+	manageTransformers(
+		Real64 const surplusPowerOutFromLoadCenters
+	);
 
 	void
 	setupMeterIndices();
+
+	void
+	reinitAtBeginEnvironment();
+
+	void
+	addLoadCenterIndex( 
+		int const objectIndex
+	);
+
+	std::vector< int >
+	getLoadCenterObjIndices();
+
 
 private: //methods
 
@@ -447,6 +466,7 @@ private: //data
 	};
 
 	std::string name; // user identifier
+	bool myOneTimeFlag;
 	int availSchedPtr; // availability schedule index.
 	transformerUseEnum usageMode; // mode for transformer usage
 	thermalLossDestinationEnum heatLossesDestination; // mode for where thermal losses go
@@ -471,8 +491,8 @@ private: //data
 	//calculated and from elsewhere vars
 	Real64 ratedNL; // rated no load losses, user input or calculated [W]
 	Real64 ratedLL; // rated load losses, user input or calculated [W]
-	int loadCenterNum; // number of load centers served by the transformer
-	std::vector < int > loadCenterIndexes; // index array of load centers served by the transformer
+	int numLoadCenters; // number of load centers served by the transformer
+	std::vector < int > loadCenterObjIndexes; // index array of load centers served by the transformer
 	int overloadErrorIndex; // used for warning message when transformer is overloaded
 	//results and reporting
 	Real64 efficiency; // transformer efficiency
@@ -553,6 +573,9 @@ public: // Methods
 		Real64 & thermalPowerOutput // Actual generator thermal power output
 	);
 
+	void
+	reinitAtBeginEnvironment();
+
 private: //Methods
 
 
@@ -603,6 +626,7 @@ private: // Creation
 		generatorListName( ""),
 		genOperationScheme( genOpSchemeNotYetSet ),
 		demandMeterPtr( 0 ),
+		generatorsPresent( false ),
 		numGenerators( 0 ),
 		demandLimit( 0.0 ),
 		trackSchedPtr( 0 ),
@@ -645,6 +669,15 @@ public: // Methods
 		int objectNum
 	);
 
+	void
+	setupMeterIndices();
+
+	void
+	reinitAtBeginEnvironment();
+
+	std::string
+	getTransformerName();
+
 private: //Methods
 
 
@@ -686,6 +719,7 @@ private: // data
 	std::string demandMeterName; // Name of Demand Energy Meter for "on demand" operation
 	int demandMeterPtr; // "pointer" to Meter for electrical Demand to meet
 	std::string generationMeterName; // Name of Generated Energy Meter for "on demand" operation
+	bool generatorsPresent; // true if any generators
 	int numGenerators; // Number of Generators
 	std::vector < std::unique_ptr <GeneratorController> > elecGenCntrlObj; // generator controller objects
 	Real64 demandLimit; // Demand Limit in Watts(W) which the generator will operate above
@@ -728,6 +762,7 @@ private: // Creation
 	ElectricPowerServiceManager() :
 			
 			getInputFlag( true ),
+			newEnvironmentFlag( true ),
 			numLoadCenters( 0 ),
 
 			numElecStorageDevices( 0 ),
@@ -739,8 +774,9 @@ private: // Creation
 			elecProducedWTIndex( 0 ),
 			elecProducedStorageIndex( 0 ),
 			name( "Whole Building" ),
-			facilityTransformerPresent( false ),
-			facilityTransformerName( ""),
+			facilityPowerInTransformerPresent( false ),
+			facilityPowerInTransformerName( ""),
+			wholeBldgRemainingLoad( 0.0 ),
 			electricityProd( 0.0 ),
 			electProdRate( 0.0 ),
 			electricityPurch( 0.0 ),
@@ -786,11 +822,15 @@ private: //Methods
 	setupMeterIndices();
 
 	void
+	reinitAtBeginEnvironment();
+
+	void
 	updateWholeBuildingRecords();
 
 
 private: // data
 		bool getInputFlag; // control if object needs to get input and call factory methods
+		bool newEnvironmentFlag; //control if object needs to reinit at beginning of a new environment period
 		int numLoadCenters;
 
 		int numElecStorageDevices;
@@ -803,9 +843,14 @@ private: // data
 		int elecProducedStorageIndex;
 		std::string name;
 		std::vector< std::unique_ptr < ElectPowerLoadCenter > > elecLoadCenterObjs;
-		bool facilityTransformerPresent;
-		std::string facilityTransformerName; // hold name for verificaton and error messages
-		std::unique_ptr < ElectricTransformer > facilityTransformerObj;
+		bool facilityPowerInTransformerPresent;
+		std::string facilityPowerInTransformerName; // hold name for verificaton and error messages
+		std::unique_ptr < ElectricTransformer > facilityPowerInTransformerObj;
+		int numPowerOutTransformers;
+		std::vector< std::string > powerOutTransformerNames;
+		std::vector< std::unique_ptr < ElectricTransformer > > powerOutTransformerObjs;
+
+		Real64 wholeBldgRemainingLoad;
 		Real64 electricityProd; // Current Electric Produced from Equipment (J)
 		Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
 		Real64 electricityPurch; // Current Purchased Electric (J)

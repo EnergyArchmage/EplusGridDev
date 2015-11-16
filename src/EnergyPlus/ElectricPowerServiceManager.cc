@@ -10,6 +10,7 @@
 #include <PlantLocation.hh>
 #include <OutputProcessor.hh>
 #include <DataGlobals.hh>
+#include <DataHVACGlobals.hh>
 #include <UtilityRoutines.hh>
 #include <InputProcessor.hh>
 #include <DataIPShortCuts.hh>
@@ -43,7 +44,53 @@ namespace ElectricPowerService {
 			this->setupMeterIndexFlag = false;
 		}
 
+		if ( DataGlobals::BeginEnvrnFlag && this->newEnvironmentFlag ) {
+			this->reinitAtBeginEnvironment();
+			this->newEnvironmentFlag = false;
+		}
+		if ( ! DataGlobals::BeginEnvrnFlag ) this->newEnvironmentFlag = true;
 
+		// Determine the demand from the simulation for Demand Limit and Track Electrical and Reporting
+		//ElecFacilityBldg = GetInstantMeterValue( this->elecFacilityIndex, 1 );
+		//ElecFacilityHVAC = GetInstantMeterValue( ElecFacilityIndex, 2 );
+		// deprecate this PV stuff?
+		//ElecProducedPV = GetInstantMeterValue( ElecProducedPVIndex, 2 );
+		//ElecProducedWT = GetInstantMeterValue( ElecProducedWTIndex, 2 );
+		//ElecProducedStorage = GetInstantMeterValue( ElecProducedStorageIndex, 2 );
+		// retrieve data from meters for demand and production
+		this->totalBldgElecDemand = GetInstantMeterValue( this->elecFacilityIndex, 1 ) / DataGlobals::TimeStepZoneSec;
+		this->totalHVACElecDemand = GetInstantMeterValue( this->elecFacilityIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->totalElectricDemand = this->totalBldgElecDemand + this->totalHVACElecDemand;
+		this->elecProducedPVRate = GetInstantMeterValue( this->elecProducedPVIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->elecProducedWTRate = GetInstantMeterValue( this->elecProducedWTIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->elecProducedStorageRate = GetInstantMeterValue( this->elecProducedStorageIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+
+		this->wholeBldgRemainingLoad = this->totalElectricDemand;
+
+
+		if ( UpdateMetersOnly ) { // just update record keeping, don't resimulate load centers
+			if ( this->facilityPowerInTransformerPresent ) {
+				this->facilityPowerInTransformerObj->manageTransformers( 0.0 );
+			}
+
+			if ( this->numPowerOutTransformers > 0 ) {
+				for (auto loopPowerOutTransformers = 0; loopPowerOutTransformers < this->numPowerOutTransformers; ++loopPowerOutTransformers) {
+					//determine surplus production from the load centers connected to this transformer
+					auto loadCenters = this->powerOutTransformerObjs[ loopPowerOutTransformers ]->getLoadCenterObjIndices;
+					for (auto loopLoadCenters = 0; loopLoadCenters < loadCenters.size; ++loopLoadCenters){
+	// this needs to be from takin the total surplus out to utility grid and partitioning out what fraction of that is from the load centers that point to this transformer.  TODO
+	// legacy code is not correct. defer for now. 
+
+	//					this->elecLoadCenterObjs[ loadCenters[ loopLoadCenters ] ]->
+					}
+
+
+				}
+			}
+
+			this->updateWholeBuildingRecords();
+			return;
+		}
 
 	}
 	void
@@ -55,7 +102,7 @@ namespace ElectricPowerService {
 
 	if ( this->numLoadCenters > 0 ){
 		for ( auto iLoadCenterNum = 1; iLoadCenterNum <= this->numLoadCenters; ++iLoadCenterNum ){
-
+			// call Electric Power Load Center constructor, in place
 			this->elecLoadCenterObjs.emplace_back( std::make_unique <ElectPowerLoadCenter > ( iLoadCenterNum) );
 		}
 	
@@ -71,28 +118,46 @@ namespace ElectricPowerService {
 		int numAlphas; // Number of elements in the alpha array
 		int numNums; // Number of elements in the numeric array
 		int iOStat; // IO Status when calling get input subroutine
-		int facilityTransformerIDFObjNum = 0;
+		int facilityPowerInTransformerIDFObjNum = 0;
 		bool foundInFromGridTransformer = false;
+		bool foundPowerOutFromOnsiteTransformer = false;
+
 		DataIPShortCuts::cCurrentModuleObject =  "ElectricLoadCenter:Transformer";
 		for ( auto loopTransformer = 1; loopTransformer <= this->numTransformers; ++loopTransformer) {
-			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, storageIDFObjectNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, iOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, loopTransformer, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, iOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
 
 			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "PowerInFromGrid" ) ) {
 				if ( ! foundInFromGridTransformer ) {
 					foundInFromGridTransformer = true;
-					facilityTransformerIDFObjNum = loopTransformer;
+					facilityPowerInTransformerIDFObjNum = loopTransformer;
+					this->facilityPowerInTransformerName = DataIPShortCuts::cAlphaArgs( 1 );
+					this->facilityPowerInTransformerPresent = true;
 				} else {
 					// should only have one transformer in input that is PowerInFromGrid
 					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
 					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " = " + DataIPShortCuts::cAlphaArgs( 3 ) );
 					ShowContinueError("Only one transformer with Usage PowerInFromGrid can be used, first one in input file will be used and the simulation continues...");
 				}
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "PowerOutFromOnsiteGeneration" ) ) {
+				++this->numPowerOutTransformers;
+				this->powerOutTransformerNames.push_back( DataIPShortCuts::cAlphaArgs( 1 ) ) ;
+				this->powerOutTransformerObjs.emplace_back( std::make_unique< ElectricTransformer >( DataIPShortCuts::cAlphaArgs( 1 ) ) )
 			}
 		}
 		if ( foundInFromGridTransformer ) {
-		
+			//call transformer constructor
+			facilityPowerInTransformerObj = std::make_unique< ElectricTransformer >( this->facilityPowerInTransformerName  );
 		}
-	
+	} // if transformers
+
+	// loop over power out transformers and electric load centers and register load center object index
+	for (auto loopPowerOutTransformers = 0; loopPowerOutTransformers < this->numPowerOutTransformers; ++loopPowerOutTransformers ) {
+
+		for ( auto loopElectLoadCenters = 0; loopElectLoadCenters < this->numLoadCenters; ++loopElectLoadCenters ) {
+			if (InputProcessor::SameString( this->powerOutTransformerNames[ loopPowerOutTransformers ], this->elecLoadCenterObjs[ loopElectLoadCenters ]->getTransformerName() ) ){
+				this->powerOutTransformerObjs[ loopPowerOutTransformers ]->addLoadCenterIndex( loopElectLoadCenters );
+			}
+		}
 	}
 
 	}
@@ -100,22 +165,90 @@ namespace ElectricPowerService {
 	void
 	ElectricPowerServiceManager::setupMeterIndices()
 	{
-		elecFacilityIndex = EnergyPlus::GetMeterIndex( "Electricity:Facility" );
-		elecProducedCoGenIndex = EnergyPlus::GetMeterIndex( "Cogeneration:ElectricityProduced" );
-		elecProducedPVIndex = EnergyPlus::GetMeterIndex( "Photovoltaic:ElectricityProduced" );
-		elecProducedWTIndex = EnergyPlus::GetMeterIndex( "WindTurbine:ElectricityProduced" );
+		elecFacilityIndex        = EnergyPlus::GetMeterIndex( "Electricity:Facility" );
+		elecProducedCoGenIndex   = EnergyPlus::GetMeterIndex( "Cogeneration:ElectricityProduced" );
+		elecProducedPVIndex      = EnergyPlus::GetMeterIndex( "Photovoltaic:ElectricityProduced" );
+		elecProducedWTIndex      = EnergyPlus::GetMeterIndex( "WindTurbine:ElectricityProduced" );
 		elecProducedStorageIndex = EnergyPlus::GetMeterIndex( "ElectricStorage:ElectricityProduced" );
 
+		if ( this->numLoadCenters > 0 ){
+			for( auto loopLoadCenters = 1; loopLoadCenters <= this->numLoadCenters; ++loopLoadCenters ){
+				elecLoadCenterObjs[ loopLoadCenters ]->setupMeterIndices();
+			}
+		}
+		if (this->facilityTransformerPresent ) {
+			facilityTransformerObj->setupMeterIndices();
+		}
+
+	}
+
+	void
+	ElectricPowerServiceManager::reinitAtBeginEnvironment()
+	{
+		this->wholeBldgRemainingLoad  = 0.0;
+		this->electricityProd         = 0.0;
+		this->electProdRate           = 0.0;
+		this->electricityPurch        = 0.0;
+		this->electPurchRate          = 0.0;
+		this->electSurplusRate        = 0.0;
+		this->electricitySurplus      = 0.0;
+		this->electricityNetRate      = 0.0;
+		this->electricityNet          = 0.0;
+		this->totalBldgElecDemand     = 0.0;
+		this->totalHVACElecDemand     = 0.0;
+		this->totalElectricDemand     = 0.0;
+		this->elecProducedPVRate      = 0.0;
+		this->elecProducedWTRate      = 0.0;
+		this->elecProducedStorageRate = 0.0;
+
+		if ( this->numLoadCenters > 0 ){
+			for( auto loopLoadCenters = 1; loopLoadCenters <= this->numLoadCenters; ++loopLoadCenters ){
+				elecLoadCenterObjs[ loopLoadCenters ]->reinitAtBeginEnvironment();
+			}
+		}
+		if ( this->facilityPowerInTransformerPresent ) {
+			facilityPowerInTransformerObj->reinitAtBeginEnvironment();
+		}
+		if ( this->numPowerOutTransformers > 0 ) {
+			for (auto loopOutTransformers = 0; loopOutTransformers < this->numPowerOutTransformers ; ++loopOutTransformers ) {
+				this->powerOutTransformerObjs[ loopOutTransformers ]->reinitAtBeginEnvironment();
+			}
+		}
 
 	}
 
 	void
 	ElectricPowerServiceManager::updateWholeBuildingRecords()
 	{
-	
+
+		this->electricityProd = GetInstantMeterValue( this->elecProducedCoGenIndex, 2 ) + ( this->elecProducedPVRate + this->elecProducedWTRate + this->elecProducedStorageRate ) * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour; //whole building
+		this->electProdRate = this->electricityProd / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour ); //whole building
+
+		//Report the Total Electric Power Purchased [W], If negative then there is extra power to be sold or stored.
+		this->electPurchRate = this->totalElectricDemand - this->electProdRate;
+		//Check this value against a tolerance to aid in reporting.
+		if ( std::abs( this->electPurchRate ) < 0.0001 ) this->electPurchRate = 0.0;
+		if ( this->electPurchRate < 0.0 ) this->electPurchRate = 0.0; // don't want negative purchased...
+
+		//Report the Total Electric Energy Purchased [J]
+		this->electricityPurch = this->electPurchRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+		//report the total electric surplus....
+		this->electSurplusRate = this->electProdRate - this->totalElectricDemand;
+		if ( std::abs( this->electSurplusRate ) < 0.0001 ) this->electSurplusRate = 0.0;
+		if ( this->electSurplusRate < 0.0 ) this->electSurplusRate = 0.0; // don't want negative surplus
+
+		this->electricitySurplus = this->electSurplusRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+		//report the net electricity , + is purchased, - is surplus
+		this->electricityNetRate = this->totalElectricDemand - this->electProdRate;
+
+		this->electricityNet = this->electricityNetRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+
 	}
 
-	ElectPowerLoadCenter::ElectPowerLoadCenter(
+	ElectPowerLoadCenter::ElectPowerLoadCenter( // constructor
 		int objectNum
 	)
 	{
@@ -124,6 +257,7 @@ namespace ElectricPowerService {
 		this->generatorListName="";
 		this->genOperationScheme = genOpSchemeNotYetSet ;
 		this->demandMeterPtr = 0;
+		this->generatorsPresent = false;
 		this->numGenerators = 0;
 		this->demandLimit = 0.0;
 		this->trackSchedPtr = 0;
@@ -269,6 +403,7 @@ namespace ElectricPowerService {
 			int alphaCount = 2;
 			for ( auto genCount = 1; genCount <= this->numGenerators; ++genCount) {
 				// call constructor in place
+				this->generatorsPresent = true;
 				this->elecGenCntrlObj.emplace_back( std::make_unique < GeneratorController >( DataIPShortCuts::cAlphaArgs( alphaCount ), DataIPShortCuts::cAlphaArgs( alphaCount + 1 ), DataIPShortCuts::rNumericArgs( 2 * genCount - 1 ), DataIPShortCuts::cAlphaArgs( alphaCount + 2 ), DataIPShortCuts::rNumericArgs( 2 * genCount) ) );
 				++alphaCount;
 				++alphaCount;
@@ -280,11 +415,7 @@ namespace ElectricPowerService {
 
 		if ( ! errorsFound && this->inverterPresent ) {
 			// call inverter constructor
-			std::string thisInverterName = this->inverterName;
-			//this->inverterObj = std::unique_ptr< DCtoACInverter >( new DCtoACInverter( thisInverterName ) );
-
-			this->inverterObj = std::make_unique< DCtoACInverter >  ( thisInverterName ) ;
-			//this->inverterObj = new DCtoACInverter ( thisInverterName ) ;
+			this->inverterObj = std::make_unique< DCtoACInverter >  ( this->inverterName ) ;
 		}
 
 		if ( ! errorsFound && this->storagePresent ) {
@@ -293,9 +424,62 @@ namespace ElectricPowerService {
 		}
 
 		if ( ! errorsFound && this->transformerPresent ) {
+			// figure out if the transformer is of usage type LoadCenterProductionConditioning, new for v8.5
+			
 			//call transformer constructor 
-			this->transformerObj = std::make_unique< ElectricTransformer >( this->transformerName  );
+
+			//this->transformerObj = std::make_unique< ElectricTransformer >( this->transformerName  );
 		
+		}
+
+	}
+
+	void
+	ElectPowerLoadCenter::setupMeterIndices()
+	{
+		this->demandMeterPtr = GetMeterIndex( this->demandMeterName );
+	}
+
+	void
+	ElectPowerLoadCenter::reinitAtBeginEnvironment()
+	{
+		this->dCElectricityProd        = 0.0;
+		this->dCElectProdRate          = 0.0;
+		this->dCpowerConditionLosses   = 0.0;
+		this->electricityProd          = 0.0;
+		this->electProdRate            = 0.0;
+		this->thermalProd              = 0.0;
+		this->thermalProdRate          = 0.0;
+		this->totalPowerRequest        = 0.0;
+		this->totalThermalPowerRequest = 0.0;
+		this->electDemand              = 0.0;
+
+		if ( this->generatorsPresent ) {
+			for ( auto genLoop=1; genLoop<= this->numGenerators; ++genLoop ) {
+				this->elecGenCntrlObj[ genLoop ]->reinitAtBeginEnvironment();
+			}
+		}
+
+		if (this->transformerPresent ){
+			this->transformerObj->reinitAtBeginEnvironment();
+		}
+
+		if ( this->storagePresent ) {
+			this->storageObj->reinitAtBeginEnvironment();
+		}
+
+		if ( this->inverterPresent ) {
+			this->inverterObj->reinitAtBeginEnvironment();
+		}
+	}
+
+	std::string
+	ElectPowerLoadCenter::getTransformerName()
+	{
+		if ( this->transformerPresent ) {
+			return this->transformerName;		
+		} else {
+			return "";
 		}
 
 	}
@@ -324,6 +508,27 @@ namespace ElectricPowerService {
 		Real64 thermalToElectRatio
 	)
 	{
+		//initialization
+		this->name = "";
+		this->typeOfName= "";
+		this->generatorType = generatorNotYetSet;
+		this->generatorIndex = 0;
+		this->maxPowerOut = 0.0;
+		this->availSchedPtr = 0;
+		this->powerRequestThisTimestep= 0.0;
+		this->onThisTimestep = false;
+		this->eMSPowerRequest= 0.0;
+		this->eMSRequestOn = false;
+		this->plantInfoFound = false;
+		this->cogenLocation =  PlantLocation( 0, 0, 0, 0 );
+		this->nominalThermElectRatio= 0.0;
+		this->dCElectricityProd= 0.0;
+		this->dCElectProdRate= 0.0;
+		this->electricityProd= 0.0;
+		this->electProdRate= 0.0;
+		this->thermalProd= 0.0;
+		this->thermalProdRate= 0.0;
+
 		std::string const routineName = "GeneratorController constructor ";
 		bool errorsFound = false;
 
@@ -374,6 +579,18 @@ namespace ElectricPowerService {
 
 		}
 
+	}
+
+	void
+	GeneratorController::reinitAtBeginEnvironment()
+	{
+		this->onThisTimestep    = false;
+		this->dCElectricityProd = 0.0;
+		this->dCElectProdRate   = 0.0;
+		this->electricityProd   = 0.0;
+		this->electProdRate     = 0.0;
+		this->thermalProd       = 0.0;
+		this->thermalProdRate   = 0.0;
 	}
 
 	void
@@ -564,6 +781,15 @@ namespace ElectricPowerService {
 			ShowFatalError( routineName + "Preceding errors terminate program." );
 		}
 
+	}
+
+	void
+	DCtoACInverter::reinitAtBeginEnvironment()
+	{
+		this->ancillACuseRate   = 0.0;
+		this->ancillACuseEnergy = 0.0;
+		this->qdotConvZone      = 0.0;
+		this->qdotRadZone       = 0.0;
 	}
 
 	void
@@ -861,6 +1087,25 @@ namespace ElectricPowerService {
 		}
 	}
 
+	void
+	ElectricStorage::reinitAtBeginEnvironment()
+	{
+		this->pelNeedFromStorage      = 0.0;
+		this->pelFromStorage          = 0.0;
+		this->pelIntoStorage          = 0.0;
+		this->qdotConvZone            = 0.0;
+		this->qdotRadZone             = 0.0;
+		this->timeElapsed             = 0.0;
+		this->electEnergyinStorage    = 0.0;
+		this->storedPower             = 0.0;
+		this->storedEnergy            = 0.0;
+		this->decrementedEnergyStored = 0.0;
+		this->drawnPower              = 0.0;
+		this->drawnEnergy             = 0.0;
+		this->thermLossRate           = 0.0;
+		this->thermLossEnergy         = 0.0;
+	
+	}
 
 	void
 	ElectricStorage::manageElectCenterStorageInteractions(
@@ -929,6 +1174,7 @@ namespace ElectricPowerService {
 		std::string objectName
 	)
 	{
+		this->myOneTimeFlag = true;
 		this->availSchedPtr = 0;
 		this->usageMode = useNotYetSet;
 		this->heatLossesDestination = heatLossNotDetermined;
@@ -947,7 +1193,7 @@ namespace ElectricPowerService {
 		this->considerLosses = true;
 		this->ratedNL = 0.0;
 		this->ratedLL = 0.0;
-		this->loadCenterNum = 0;
+		this->numLoadCenters = 0;
 		this->overloadErrorIndex = 0;
 		this->efficiency = 0.0;
 		this->powerIn = 0.0;
@@ -1116,20 +1362,192 @@ namespace ElectricPowerService {
 		} else {
 			ShowSevereError( routineName + " did not find transformer name = " + objectName);
 			errorsFound = true;
-		
-		
 		}
 
 		if ( errorsFound ) {
 			ShowFatalError( routineName + "Preceding errors terminate program." );
 		}
+	}
+
+	void
+	ElectricTransformer::addLoadCenterIndex( 
+		int const objectIndex
+	)
+	{
+		++this->numLoadCenters;
+		this->loadCenterObjIndexes.push_back( objectIndex );
+	}
+
+	std::vector< int >
+	ElectricTransformer::getLoadCenterObjIndices()
+	{
+		return this->loadCenterObjIndexes;
 
 	}
 
 	void
-	ElectricTransformer::manageTransformers()
+	ElectricTransformer::manageTransformers(
+		Real64 const surplusPowerOutFromLoadCenters
+	)
 	{
-	
+		Real64 const ambTempRef = 20.0; // reference ambient temperature (C)
+		if ( this->myOneTimeFlag ) {
+			// calculate rated no load losses and rated load losses if the performance input method is based on
+			// nominal efficiency. This calculation is done only once
+
+			if ( this->performanceInputMode == efficiencyMethod ) {
+
+				Real64 resRef = this->factorTempCoeff + this->tempRise + ambTempRef;
+				Real64 resSpecified = this->factorTempCoeff + this->ratedTemp;
+				Real64 resRatio = resSpecified / resRef;
+				Real64 factorTempCorr = ( 1.0 - this->eddyFrac ) * resRatio + this->eddyFrac * ( 1.0 / resRatio );
+				Real64 numerator = this->ratedCapacity * this->ratedPUL * ( 1.0 - this->ratedEfficiency );
+				Real64 denominator = this->ratedEfficiency * ( 1.0 + pow_2( this->ratedPUL / this->maxPUL ) );
+
+				this->ratedNL = numerator / denominator;
+				this->ratedLL = this->ratedNL / ( factorTempCorr * pow_2( this->maxPUL ) );
+			}
+			this->myOneTimeFlag = false;
+		}
+
+		Real64 elecLoad; // transformer load which may be power in or out depending on the usage mode
+		Real64 pastElecLoad; // transformer load at the previous timestep
+		switch ( this->usageMode )
+		{
+		case powerInFromGrid: {
+			for ( auto meterNum = 1; meterNum <= this->wiredMeterPtrs.size ; ++meterNum ) {
+
+				if ( DataGlobals::MetersHaveBeenInitialized ) {
+
+					elecLoad += GetInstantMeterValue( this->wiredMeterPtrs[ meterNum ], 1 ) / DataGlobals::TimeStepZoneSec + GetInstantMeterValue( this->wiredMeterPtrs[ meterNum ], 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+					// PastElecLoad store the metered value in the previous time step. This value will be used to check whether
+					// a transformer is overloaded or not.
+					pastElecLoad += GetCurrentMeterValue( this->wiredMeterPtrs[ meterNum ] ) / DataGlobals::TimeStepZoneSec;
+				} else {
+					elecLoad = 0.0;
+					pastElecLoad = 0.0;
+				}
+
+				// Because transformer loss has been accounted for by Electricity:Facility and Electricity:HVAC, the transformer
+				// loss needs to be deducted from the metered value. Otherwise, double counting (circular relationship) occurs.
+				if ( this->specialMeter[ meterNum ] ) {
+					elecLoad = elecLoad - this->loadLossRate - this->noLoadLossRate;
+
+					if ( elecLoad < 0 ) elecLoad = 0.0; //Essential check.
+				}
+
+			}
+
+			this->powerOut = elecLoad; //the metered value is transformer's output in PowerInFromGrid mode
+			break;
+		}
+		case powerOutFromBldg: {
+			this->powerIn = surplusPowerOutFromLoadCenters;
+			break;
+		}
+		} // switch usage mode
+
+
+		// check availability schedule
+		if ( ScheduleManager::GetCurrentScheduleValue( this->availSchedPtr ) > 0.0 ) {
+			Real64 capacity = this->ratedCapacity;
+			Real64 pUL = elecLoad / capacity;
+
+			if ( pUL > 1.0 ) {
+				pUL = 1.0;
+			}
+
+			//Originally, PUL was used to check whether a transformer is overloaded (PUL > 1.0 or not). However, it was
+			//found that ElecLoad obtained from GetInstantMeterVlaue() might refer to intermideiate values before
+			//convergence. The intermediate values may issue false warning. This the reason why PastElecLoad obtained
+			//by GetCurrentMeterValue() is used here to check overload issue.
+			if ( ( pastElecLoad / capacity ) > 1.0 ) {
+				if ( this->overloadErrorIndex == 0 ) {
+					ShowSevereError( "Transformer Overloaded" );
+					ShowContinueError( "Entered in ElectricLoadCenter:Transformer =" + this->name );
+				}
+				ShowRecurringSevereErrorAtEnd( "Transformer Overloaded: Entered in ElectricLoadCenter:Transformer =" + this->name, this->overloadErrorIndex );
+			}
+
+			Real64 tempChange = std::pow( pUL, 1.6 ) * this->tempRise;
+			Real64 ambTemp = 20.0;
+			if ( this->heatLossesDestination == zoneGains ) {
+
+				ambTemp = DataHeatBalance::ZnAirRpt( this->zoneNum ).MeanAirTemp;
+			} else {
+				ambTemp = 20.0;
+			}
+
+			Real64 resRef = this->factorTempCoeff + this->tempRise + ambTempRef;
+			Real64 resSpecified = this->factorTempCoeff + tempChange + ambTemp;
+			Real64 resRatio = resSpecified / resRef;
+			Real64 factorTempCorr = ( 1.0 - this->eddyFrac ) * resRatio + this->eddyFrac * ( 1.0 / resRatio );
+
+			this->loadLossRate = this->ratedLL * pow_2( pUL ) * factorTempCorr;
+			this->noLoadLossRate = this->ratedNL;
+		} else { //Transformer is not available.
+			this->loadLossRate = 0.0;
+			this->noLoadLossRate = 0.0;
+		}
+
+		Real64 totalLossRate = this->loadLossRate + this->noLoadLossRate;
+
+		switch ( this->usageMode )
+		{
+		case powerInFromGrid: {
+			this->powerIn = elecLoad + totalLossRate;
+
+			//Transformer losses are wired to the meter via the variable "%ElecUseUtility" only if transformer losses
+			//are considered in utility cost. If transformer losses are not considered in utility cost, 0 is assigned
+			//to the variable "%ElecUseUtility".
+			if ( this->considerLosses ) {
+				this->elecUseUtility = totalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+			} else {
+				this->elecUseUtility = 0.0;
+			}
+
+			//Transformer has two modes.If it works in one mode, the variable for meter output in the other mode
+			//is assigned 0
+			this->elecProducedCoGen = 0.0;
+
+			break;
+		}
+
+		case powerOutFromBldg: {
+			this->powerOut = elecLoad - totalLossRate;
+
+			if ( this->powerOut < 0 ) this->powerOut = 0.0;
+
+			this->elecProducedCoGen = -1.0 * totalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+			//Transformer has two modes.If it works in one mode, the variable for meter output in the other mode
+			//is assigned 0
+			this->elecUseUtility = 0.0;
+			break;
+		}
+		} // switch
+
+		if ( this->powerIn <= 0 ) {
+			this->efficiency = 0.0;
+		} else {
+			this->efficiency = this->powerOut / this->powerIn;
+		}
+		this->noLoadLossEnergy = this->noLoadLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+		this->loadLossEnergy = this->loadLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+		this->energyIn = this->powerIn * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+		this->energyOut = this->powerOut * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+		//   Thermal loss rate may not be equal to Total loss rate. This is the case when surplus power is less than the
+		//    calculated total loss rate for a cogeneration transformer. That is why "PowerIn - PowerOut" is used below.
+		this->thermalLossRate = this->powerIn - this->powerOut;
+		this->thermalLossEnergy = totalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+		if ( this->zoneNum > 0 ) { // set values for zone heat gains
+			this->qdotConvZone = ( 1.0 - this->zoneRadFrac ) * this->thermalLossRate;
+			this->qdotRadZone = ( this->zoneRadFrac ) * this->thermalLossRate;
+		}
+
 	}
 
 	void
@@ -1149,6 +1567,26 @@ namespace ElectricPowerService {
 				}
 			}
 		}
+	}
+
+	void
+	ElectricTransformer::reinitAtBeginEnvironment()
+	{
+		this->efficiency        = 0.0;
+		this->powerIn           = 0.0;
+		this->energyIn          = 0.0;
+		this->powerOut          = 0.0;
+		this->energyOut         = 0.0;
+		this->noLoadLossRate    = 0.0;
+		this->noLoadLossEnergy  = 0.0;
+		this->loadLossRate      = 0.0;
+		this->loadLossEnergy    = 0.0;
+		this->thermalLossRate   = 0.0;
+		this->thermalLossEnergy = 0.0;
+		this->elecUseUtility    = 0.0;
+		this->elecProducedCoGen = 0.0;
+		this->qdotConvZone      = 0.0;
+		this->qdotRadZone       = 0.0;
 	}
 
 } // ElectricPowerService namespace
