@@ -77874,10 +77874,12 @@ ElectricLoadCenter:Transformer,
        \type choice
        \key PowerInFromGrid
        \key PowerOutFromOnsiteGeneration
+       \key LoadCenterProductionConditioning
        \default PowerInFromGrid
        \note A transformer can be used to transfer electric energy from utility grid to
        \note building (PowerInFromGrid)or from building on-site generation to
-       \note the grid (PowerOutFromOnsiteGeneration)
+       \note the grid (PowerOutFromOnsiteGeneration) or within a load center to match generation 
+       \note to the facility service before exporting to the grid (LoadCenterProductionConditioning)
   A4,  \field Zone Name
        \type object-list
        \object-list ZoneNames

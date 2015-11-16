@@ -576,10 +576,11 @@ public: // Methods
 	void
 	reinitAtBeginEnvironment();
 
+
 private: //Methods
 
 
-private: // data
+public: // data
 	enum generatorTypeEnum {
 		generatorNotYetSet,
 		generatorICEngine,
@@ -667,6 +668,11 @@ public: // Methods
 	// Constructor
 	ElectPowerLoadCenter(
 		int objectNum
+	);
+
+	void
+	manageElecLoadCenter(
+		Real64 & remainingPowerDemand
 	);
 
 	void
@@ -807,7 +813,7 @@ public: // Methods
 	{}
 
 	void
-	manageElectricLoadCenters(
+	manageElectricPowerService(
 		bool const FirstHVACIteration,
 		bool & SimElecCircuits, // simulation convergence flag
 		bool const UpdateMetersOnly // if true then don't resimulate generators, just update meters.
