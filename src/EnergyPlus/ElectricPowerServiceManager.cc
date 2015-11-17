@@ -266,6 +266,7 @@ namespace ElectricPowerService {
 		this->demandMeterPtr = 0;
 		this->generatorsPresent = false;
 		this->numGenerators = 0;
+		this->myCoGenSetupFlag = true;
 		this->demandLimit = 0.0;
 		this->trackSchedPtr = 0;
 		this->bussType = bussNotYetSet;
@@ -973,6 +974,8 @@ namespace ElectricPowerService {
 	)
 	{
 	
+
+
 	}
 
 	void

@@ -580,7 +580,7 @@ public: // Methods
 private: //Methods
 
 
-public: // data
+public: // data // might make this class a friend of ElectPowerLoadCenter?
 	enum generatorTypeEnum {
 		generatorNotYetSet,
 		generatorICEngine,
@@ -629,6 +629,7 @@ private: // Creation
 		demandMeterPtr( 0 ),
 		generatorsPresent( false ),
 		numGenerators( 0 ),
+		myCoGenSetupFlag( true ),
 		demandLimit( 0.0 ),
 		trackSchedPtr( 0 ),
 		bussType( bussNotYetSet ),
@@ -729,6 +730,7 @@ private: // data
 	bool generatorsPresent; // true if any generators
 	int numGenerators; // Number of Generators
 	std::vector < std::unique_ptr <GeneratorController> > elecGenCntrlObj; // generator controller objects
+	bool myCoGenSetupFlag;
 	Real64 demandLimit; // Demand Limit in Watts(W) which the generator will operate above
 	int trackSchedPtr; // "pointer" to schedule for electrical demand to meet.
 	electricBussTypeEnum bussType; // is this load center powered by AC or DC generators
