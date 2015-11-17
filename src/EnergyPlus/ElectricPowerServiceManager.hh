@@ -566,9 +566,9 @@ public: // Methods
 
 	void
 	simGeneratorGetPowerOutput(
-		int const loadCenterNum, // Load Center number counter
-		int const genNum, // Generator number counter
-		bool const firstHVACIteration, // Unused 2010 JANUARY
+		bool const runFlag, //true if generator is on
+		Real64 const myElecLoadRequest, //target electric power production request
+		bool const FirstHVACIteration, // 
 		Real64 & electricPowerOutput, // Actual generator electric power output
 		Real64 & thermalPowerOutput // Actual generator thermal power output
 	);
@@ -672,6 +672,7 @@ public: // Methods
 
 	void
 	manageElecLoadCenter(
+		bool const firstHVACIteration,
 		Real64 & remainingPowerDemand
 	);
 
