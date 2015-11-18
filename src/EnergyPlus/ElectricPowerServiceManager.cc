@@ -29,6 +29,7 @@
 #include <MicroCHPElectricGenerator.hh>
 #include <MicroturbineElectricGenerator.hh>
 #include <WindTurbine.hh>
+#include <DataPlant.hh>
 
 namespace EnergyPlus {
 
@@ -732,7 +733,7 @@ namespace ElectricPowerService {
 				// Turn thermal load into an electrical load for cogenerators controlled to follow heat loads
 			Real64 remainingThermalLoad = 0.0;
 
-			this->calcLoadCenterThermalLoad( firstHVACIteration, LoadCenterNum, remainingThermalLoad );
+			this->calcLoadCenterThermalLoad( remainingThermalLoad );
 			Real64 loadCenterThermalLoad = remainingThermalLoad;
 
 			for ( auto loopGenNum = 0; loopGenNum < this->numGenerators; ++loopGenNum ) {
@@ -808,7 +809,8 @@ namespace ElectricPowerService {
 		case genOpSchemeThermalFollowLimitElectrical: {
 			//  Turn a thermal load into an electrical load for cogenerators controlled to follow heat loads.
 			//  Add intitialization of RemainingThermalLoad as in the ThermalFollow operating scheme above.
-			this->calcLoadCenterThermalLoad( firstHVACIteration, LoadCenterNum, remainingThermalLoad );
+			Real64 remainingThermalLoad = 0.0;
+			this->calcLoadCenterThermalLoad( remainingThermalLoad );
 			// Total current electrical demand for the building is a secondary limit.
 			remainingLoad = remainingWholePowerDemand;
 			loadCenterElectricLoad = remainingWholePowerDemand;
@@ -899,17 +901,51 @@ namespace ElectricPowerService {
 
 		this->electDemand = loadCenterElectricLoad; //To obtain the load for transformer
 
+
+
 		if ( ( this->storagePresent ) && ( this->bussType == dCBussInverterDCStorage ) ) {
-			ManageElectCenterStorageInteractions( LoadCenterNum, StorageDrawnPower, StorageStoredPower );
+			Real64 pcuLosses = 0.0;
+			if ( this->inverterPresent  ) {
+				// this will be lagged from last calc.
+				pcuLosses = this->inverterObj->getThermLossRate();
+			}
+			Real64 powerDemand = this->totalPowerRequest + pcuLosses; // this legacy may be wrong, double counting ancillaries maybe?
+
+			Real64 powerGenSupply = 0.0;
+			for ( auto loopGen = 0; loopGen < this->numGenerators; ++loopGen ) {
+				powerGenSupply += this->elecGenCntrlObj[ loopGen ]->dCElectProdRate;
+			}
+
+			Real64 storageDrawnPower = 0.0;
+			Real64 storageStoredPower = 0.0;
+			this->storageObj->manageElectCenterStorageInteractions( powerDemand, powerGenSupply, storageDrawnPower, storageStoredPower );
 			//     Adjust whole building electric demand based on storage inputs and outputs
-			WholeBldgRemainingLoad = WholeBldgRemainingLoad - StorageDrawnPower + StorageStoredPower;
+			remainingWholePowerDemand = remainingWholePowerDemand - storageDrawnPower + storageStoredPower;
 		}
 
 		if ( this->inverterPresent ) ManageInverter( LoadCenterNum );
 
 		if ( ( this->storagePresent ) && ( ( this->bussType == dCBussInverterACStorage ) || ( this->bussType == aCBussStorage ) ) ) {
-			ManageElectCenterStorageInteractions( LoadCenterNum, StorageDrawnPower, StorageStoredPower );
-			WholeBldgRemainingLoad = WholeBldgRemainingLoad - StorageDrawnPower + StorageStoredPower;
+			Real64 pcuLosses = 0.0;
+			if ( this->inverterPresent  ) {
+				// this will be lagged from last calc.
+				pcuLosses = this->inverterObj->getThermLossRate();
+			}
+			Real64 powerDemand = this->totalPowerRequest + pcuLosses; // this legacy may be wrong, double counting ancillaries maybe?
+			Real64 powerGenSupply = 0.0;
+			if ( this->bussType == aCBussStorage ) {
+				for ( auto loopGen = 0; loopGen < this->numGenerators; ++loopGen ) {
+					powerGenSupply += this->elecGenCntrlObj[ loopGen ]->electProdRate;
+				}
+			} else if ( this->bussType == dCBussInverterACStorage ) {
+				powerGenSupply = this->inverterObj->getACPowerOut();
+			}
+
+			Real64 storageDrawnPower = 0.0;
+			Real64 storageStoredPower = 0.0;
+			this->storageObj->manageElectCenterStorageInteractions( powerDemand, powerGenSupply, storageDrawnPower, storageStoredPower );
+			remainingWholePowerDemand = remainingWholePowerDemand - storageDrawnPower + storageStoredPower;
+
 		}
 
 		this->updateLoadCenterRecords();
@@ -968,14 +1004,25 @@ namespace ElectricPowerService {
 
 	void
 	ElectPowerLoadCenter::calcLoadCenterThermalLoad(
-		bool const firstHVACIteration, // unused1208
-		int const loadCenterNum, // Load Center number counter
 		Real64 & thermalLoad // heat rate called for from cogenerator(watts)
 	)
 	{
-	
+		if ( this->myCoGenSetupFlag ) {
+			bool plantNotFound = false;
+			for ( auto loopGenNum = 0; loopGenNum < this->numGenerators; ++loopGenNum ) {
+				plantNotFound = false;
+				DataPlant::ScanPlantLoopsForObject( this->elecGenCntrlObj[ loopGenNum ]->name, this->elecGenCntrlObj[ loopGenNum ]->compPlantTypeOf_Num, this->elecGenCntrlObj[ loopGenNum ]->cogenLocation.loopNum, this->elecGenCntrlObj[ loopGenNum ]->cogenLocation.loopSideNum, this->elecGenCntrlObj[ loopGenNum ]->cogenLocation.branchNum, this->elecGenCntrlObj[ loopGenNum ]->cogenLocation.compNum, _, _, _, _, _, plantNotFound );
+				if ( ! plantNotFound ) this->elecGenCntrlObj[ loopGenNum ]->plantInfoFound = true;
+			}
+		} // cogen setup
 
-
+		// sum up "MyLoad" for all generators on this load center from plant structure
+		thermalLoad = 0.0;
+		for ( auto loopGenNum = 0; loopGenNum < this->numGenerators; ++loopGenNum ) {
+			if ( this->elecGenCntrlObj[ loopGenNum ]->plantInfoFound  ) {
+				thermalLoad += DataPlant::PlantLoop( this->elecGenCntrlObj[ loopGenNum ]->cogenLocation.loopNum ).LoopSide( this->elecGenCntrlObj[ loopGenNum ]->cogenLocation.loopSideNum ).Branch( this->elecGenCntrlObj[ loopGenNum ]->cogenLocation.branchNum ).Comp( this->elecGenCntrlObj[ loopGenNum ]->cogenLocation.compNum ).MyLoad;
+			}
+		}
 	}
 
 	void
@@ -995,6 +1042,7 @@ namespace ElectricPowerService {
 		//initialization
 		this->name = "";
 		this->typeOfName= "";
+		this->compPlantTypeOf_Num = 0;
 		this->generatorType = generatorNotYetSet;
 		this->generatorIndex = 0;
 		this->maxPowerOut = 0.0;
@@ -1020,16 +1068,22 @@ namespace ElectricPowerService {
 		this->typeOfName             = objectType;
 		if ( InputProcessor::SameString( objectType, "Generator:InternalCombustionEngine" ) ) {
 			this->generatorType = generatorICEngine;
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_ICEngine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:CombustionTurbine" ) ) {
 			this->generatorType = generatorCombTurbine;
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_CTurbine
 		} else if ( InputProcessor::SameString( objectType, "Generator:MicroTurbine" ) ) {
 			this->generatorType = generatorMicroturbine;
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroTurbine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:Photovoltaic" ) ) {
 			this->generatorType = generatorPV;
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroTurbine
 		} else if ( InputProcessor::SameString( objectType, "Generator:FuelCell" ) ) {
 			this->generatorType = generatorFuelCell;
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_FCStackCooler;
 		} else if ( InputProcessor::SameString( objectType, "Generator:MicroCHP" ) ) {
 			this->generatorType = generatorMicroCHP;
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroCHP
 		} else if ( InputProcessor::SameString( objectType, "Generator:WindTurbine" ) ) {
 			this->generatorType = generatorWindTurbine;
 		} else {
@@ -1332,6 +1386,18 @@ namespace ElectricPowerService {
 		this->qdotRadZone       = 0.0;
 	}
 
+	Real64
+	DCtoACInverter::getThermLossRate()
+	{
+		return this->thermLossRate;
+	}
+
+	Real64
+	DCtoACInverter::getACPowerOut()
+	{
+		return this->aCPowerOut;
+	}
+
 	void
 	DCtoACInverter::manageInverter(
 		int const LoadCenterNum 
@@ -1353,6 +1419,8 @@ namespace ElectricPowerService {
 	)
 	{
 		//initialize
+		this->maxRainflowArrayBounds = 100;
+		this->myWarmUpFlag =  false;
 		this->storageModelMode = storageTypeNotSet;
 		this->availSchedPtr = 0;
 		this->heatLossesDestination = heatLossNotDetermined;
@@ -1550,11 +1618,11 @@ namespace ElectricPowerService {
 					this->cycleBinNum = DataIPShortCuts::rNumericArgs( 14 );
 
 					if ( ! errorsFound ) { // life cycle calculation for this battery, allocate arrays for degradation calculation
-					//humm zero base instead of 1?
-						this->b10.resize( this->maxRainflowArrayBounds + 2, 0.0 );
-						this->x0.resize( this->maxRainflowArrayBounds + 2, 0 );
-						this->nmb0.resize( this->cycleBinNum + 1, 0.0 );
-						this->oneNmb0.resize( this->cycleBinNum+ 1, 0.0 );
+					//std::vector is zero base instead of 1, so first index is now 0. 
+						this->b10.resize( this->maxRainflowArrayBounds + 1, 0.0 );
+						this->x0.resize( this->maxRainflowArrayBounds + 1, 0 );
+						this->nmb0.resize( this->cycleBinNum , 0.0 );
+						this->oneNmb0.resize( this->cycleBinNum, 0.0 );
 					}
 				}
 
@@ -1630,6 +1698,8 @@ namespace ElectricPowerService {
 	void
 	ElectricStorage::reinitAtBeginEnvironment()
 	{
+
+
 		this->pelNeedFromStorage      = 0.0;
 		this->pelFromStorage          = 0.0;
 		this->pelIntoStorage          = 0.0;
@@ -1644,18 +1714,109 @@ namespace ElectricPowerService {
 		this->drawnEnergy             = 0.0;
 		this->thermLossRate           = 0.0;
 		this->thermLossEnergy         = 0.0;
-	
+
+		this->lastTimeStepStateOfCharge = this->startingEnergyStored;
+		this->thisTimeStepStateOfCharge = this->startingEnergyStored;
+
+		if ( this->storageModelMode == kiBaMBattery ) {
+			Real64 initialCharge = this->maxAhCapacity * this->startingSOC;
+			this->lastTwoTimeStepAvailable = initialCharge * this->availableFrac;
+			this->lastTwoTimeStepBound = initialCharge * ( 1.0 - this->availableFrac );
+			this->lastTimeStepAvailable = initialCharge * this->availableFrac;
+			this->lastTimeStepBound = initialCharge * ( 1.0 - this->availableFrac );
+			this->thisTimeStepAvailable = initialCharge * this->availableFrac;
+			this->thisTimeStepBound = initialCharge * ( 1.0 - this->availableFrac );
+			if ( this->lifeCalculation == batteryLifeCalculationYes ) {
+				this->count0 = 1; // Index 0 is for initial SOC, so new input starts from index 2.
+				this->b10[ 0 ] = this->startingSOC; // the initial fractional SOC is stored as the reference
+				this->x0[ 0 ] = 0;
+				for (auto loop = 1; loop < this->maxRainflowArrayBounds + 1; ++loop) {
+					this->b10[ loop ] = 0.0;
+					this->x0[ loop ] = 0;
+				}
+				for (auto loop = 0; loop < this->cycleBinNum; ++loop) {
+					this->oneNmb0[ loop ] = 0.0;
+					this->nmb0[ loop ] = 0.0;
+				}
+				this->batteryDamage = 0.0;
+			}
+		}
+		this->myWarmUpFlag = true;
 	}
 
 	void
 	ElectricStorage::manageElectCenterStorageInteractions(
-		int const LoadCenterNum, // load center number, index for structure
+		Real64 const powerDemand, // load center power demand minus any inverter losses that need to be applied
+		Real64 const powerGenSupply, // sum of load center generator production
 		Real64 & StorageDrawnPower, // Electric Power Draw Rate from storage units
 		Real64 & StorageStoredPower // Electric Power Store Rate from storage units
 	)
 	{
-	
+
+		if ( this->myWarmUpFlag && ( ! DataGlobals::WarmupFlag ) ) {
+			this->reinitAtBeginEnvironment();
+			this->myWarmUpFlag = false;
+		}
+
+		Real64 timeElapsed = DataGlobals::HourOfDay + DataGlobals::TimeStep * DataGlobals::TimeStepZone + DataHVACGlobals::SysTimeElapsed;
+		if ( this->timeElapsed != timeElapsed ) { //time changed, update last with "current" result from previous time
+			if ( this->storageModelMode == kiBaMBattery && this->lifeCalculation == batteryLifeCalculationYes ) {
+				//    At this point, the current values, last time step values and last two time step values have not been updated, hence:
+				//    "ThisTimeStep*" actually points to the previous one time step
+				//    "LastTimeStep*" actually points to the previous two time steps
+				//    "LastTwoTimeStep" actually points to the previous three time steps
+
+				//      Calculate the fractional SOC change between the "current" time step and the "previous one" time step
+				Real64 deltaSOC1 = this->thisTimeStepAvailable +this->thisTimeStepBound - this->lastTimeStepAvailable - this->lastTimeStepBound;
+				deltaSOC1 /= this->maxAhCapacity;
+
+				//      Calculate the fractional SOC change between the "previous one" time step and the "previous two" time steps
+				Real64 deltaSOC2 = this->lastTimeStepAvailable + this->lastTimeStepBound - this->lastTwoTimeStepAvailable - this->lastTwoTimeStepBound;
+				deltaSOC2 /= this->maxAhCapacity;
+
+				//     DeltaSOC2 = 0 may occur at the begining of each simulation environment.
+				//     DeltaSOC1 * DeltaSOC2 means that the SOC from "LastTimeStep" is a peak or valley. Only peak or valley needs
+				//     to call the rain flow algorithm
+				if ( ( deltaSOC2 == 0 ) || ( ( deltaSOC1 * deltaSOC2 ) < 0 ) ) {
+					//     Because we cannot determine whehter "ThisTimeStep" is a peak or valley (next time step is unknown yet), we
+					//     use the "LastTimeStep" value for battery life calculation.
+					Real64 input0 = ( this->lastTimeStepAvailable + this->lastTimeStepBound ) / this->maxAhCapacity;
+					this->b10[ this->count0 ] = input0;
+
+					//        The arrary size needs to be increased when count = MaxRainflowArrayBounds. Please note that (MaxRainflowArrayBounds +1)
+					//        is the index used in the subroutine RainFlow. So we cannot reallocate array size until count = MaxRainflowArrayBounds +1.
+					if ( this->count0 == this->maxRainflowArrayBounds ) {
+						this->b10.resize( this->maxRainflowArrayBounds + 1 + this->maxRainflowArrayInc, 0.0 );
+						this->x0.resize( this->maxRainflowArrayBounds + 1 + this->maxRainflowArrayInc, 0.0 );
+						this->maxRainflowArrayBounds += this->maxRainflowArrayInc;
+					}
+
+					this->rainflow( this->cycleBinNum, input0, this->b10, this->x0, this->count0, this->nmb0, this->oneNmb0, this->maxRainflowArrayBounds + 1 );
+
+					this->batteryDamage = 0.0;
+
+					for ( auto binNum = 0; binNum < this->cycleBinNum; ++binNum ) {
+						//       Battery damage is calculated by accumulating the impact from each cycle.
+						this->batteryDamage += this->oneNmb0[ binNum ] / CurveManager::CurveValue( this->lifeCurveNum, ( double( binNum ) / double( this->cycleBinNum ) ) );
+					}
+				}
+			}
+
+
+			this->lastTimeStepStateOfCharge = this->thisTimeStepStateOfCharge;
+			this->lastTwoTimeStepAvailable = this->lastTimeStepAvailable;
+			this->lastTwoTimeStepBound = this->lastTimeStepBound;
+			this->lastTimeStepAvailable = this->thisTimeStepAvailable;
+			this->lastTimeStepBound = this->thisTimeStepBound;
+			this->timeElapsed = timeElapsed;
+
+		} // end if time changed
+
+		// end Inits
+
+
 	}
+
 
 
 	void
@@ -1691,10 +1852,115 @@ namespace ElectricPowerService {
 		int & count, // calculated here - stored for next timestep in main loop
 		std::vector < Real64 > Nmb, // calculated here - stored for next timestep in main loop
 		std::vector < Real64 > OneNmb, // calculated here - stored for next timestep in main loop
-		int const dim // end dimension of array
+	//	int const dim // end dimension of array
 	)
 	{
-	
+		// SUBROUTINE INFORMATION:
+		//       AUTHOR         Y. KyungTae & W. Wang
+		//       DATE WRITTEN   July-August, 2011
+		//       MODIFIED       na
+		//       RE-ENGINEERED  na
+
+		// PURPOSE OF THIS SUBROUTINE:
+		// Rainflow cycle counting for battery life calculation
+
+		// METHODOLOGY EMPLOYED:
+		// <description>
+
+		// REFERENCES:
+		// Ariduru S. 2004. Fatigue life calculation by rainflow cycle counting method.
+		//                  Master Thesis, Middle East Technical University.
+
+		// Argument array dimensioning
+	//	B1.dim( {1,dim} );
+	//	X.dim( {1,dim} );
+	//	Nmb.dim( {1,numbin} );
+	//	OneNmb.dim( {1,numbin} );
+
+		// Locals
+		// SUBROUTINE ARGUMENT DEFINITIONS:
+		//Array B1 stores the value of points
+		//Array X stores the value of two data points' difference.
+
+		// SUBROUTINE PARAMETER DEFINITIONS:
+		// na
+
+		// INTERFACE BLOCK SPECIFICATIONS:
+		// na
+
+		// DERIVED TYPE DEFINITIONS:
+		// na
+
+		// SUBROUTINE LOCAL VARIABLE DECLARATIONS:
+		int num;
+
+		X[ count ] = input - B1[ count - 1 ]; // calculate the difference between two data (current and previous)
+
+		// Get rid of the data if it is not peak nor valley
+		// The value of count means the number of peak or valley points added to the arrary B10/B1, not including the
+		// first point B10(0)/B1(0). Therefore, even if count =2, B1(count-2) is still valid.
+		if ( count >= 3 ) {
+			//  The following check on peak or valley may be not necessary in most times because the same check is made in the
+			//  upper-level subroutine. However, it does not hurt to leave it here.
+			if ( X[ count ] * X[ count - 1 ] >= 0 ) {
+				X[ count - 1 ] = B1[ count ] - B1[ count - 2 ];
+				this->shift[ B1, count - 1, count, B1, this->maxRainflowArrayBounds + 1 ]; // Get rid of (count-1) row in B1
+				this->shift[ X, count, count, X, this->maxRainflowArrayBounds + 1 ];
+				--count; // If the value keep increasing or decreasing, get rid of the middle point.
+			} // Only valley and peak will be stored in the matrix, B1
+
+			if ( ( count == 3 ) && ( std::abs( X[ 2 ] ) <= std::abs( X[ 3 ] ) ) ) {
+				//  This means the starting point is included in X(2), a half cycle is counted according to the rain flow
+				//  algorithm specified in the reference (Ariduru S. 2004)
+				num = nint( ( std::abs( X[ 2 ] ) * numbin * 10 + 5 ) / 10 ); // Count half cycle
+				Nmb[ num ] += 0.5;
+				//B1 = eoshift( B1, 1 ); // Once counting a half cycle, get rid of the value.
+				B1.erase( B1.begin() );
+				B1.push_back( 0.0 );
+				//X = eoshift( X, 1 );
+				X.erase( X.begin() );
+				X.push_back( 0.0 );
+				--count; // The number of matrix, B1 and X1 decrease.
+			}
+		} // Counting cyle end
+		//*** Note: The value of "count" changes in the upper "IF LOOP"
+
+		if ( count >= 4 ) { //count 1 cycle
+			while ( std::abs( X[ count ] ) > std::abs( X[ count - 1 ] ) ) {
+				//  This means that the starting point is not included in X(count-1). a cycle is counted according to the rain flow
+				//  algorithm specified in the reference (Ariduru S. 2004)
+				num = nint( ( std::abs( X[ count - 1 ] ) * numbin * 10 + 5 ) / 10 );
+				++Nmb[ num ];
+
+				//     X(count-2) = ABS(X(count))-ABS(X(count-1))+ABS(X(count-2))
+				X[ count - 2 ] = B1[ count ] - B1[ count - 3 ]; // Updating X needs to be done before shift operation below
+
+				this->shift( B1, count - 1, count, B1, this->maxRainflowArrayBounds + 1 ); // Get rid of two data points one by one
+				this->shift( B1, count - 2, count, B1, this->maxRainflowArrayBounds + 1 ); // Delete one point
+
+				this->shift( X, count, count, X, this->maxRainflowArrayBounds ); // Get rid of two data points one by one
+				this->shift( X, count - 1, count, X, this->maxRainflowArrayBounds ); // Delete one point
+
+				count -= 2; // If one cycle is counted, two data points are deleted.
+				if ( count < 4 ) break; // When only three data points exists, one cycle cannot be counted.
+			}
+		}
+
+		++count;
+
+		// Check the rest of the half cycles every time step
+		OneNmb = Nmb; // Array Nmb (Bins) will be used for the next time step later.
+		// OneNmb is used to show the current output only.
+		// Ideally, the following clean-up counting is needed at the last system time step in each simulation environemnt.
+		// Because of the difficulty in knowing the above information, the clean-up counting is skipped. Skipping this has
+		// little impact on the simulation results.
+		//   DO k = 1, count-1
+		//     num = NINT((ABS(X(k))*numbin*10+5)/10) !Bin number
+		//     OneNmb(num) = OneNmb(num)+0.5d0
+		//   ENDDO
+
+
+
 	}
 
 	void
@@ -1703,10 +1969,45 @@ namespace ElectricPowerService {
 		int const m,
 		int const n,
 		std::vector < Real64 > B,
-		int const dim // end dimension of arrays
+	//	int const dim // end dimension of arrays
 	)
 	{
-	
+		// SUBROUTINE INFORMATION:
+		//       AUTHOR         Y. KyungTae & W. Wang
+		//       DATE WRITTEN   July-August, 2011
+		//       MODIFIED       na
+		//       RE-ENGINEERED  na
+
+		// PURPOSE OF THIS SUBROUTINE:
+		// Utility subroutine for rainflow cycle counting
+
+
+		// Argument array dimensioning
+	//	A.dim( {1,dim} );
+	//	B.dim( {1,dim} );
+
+		// Locals
+		// SUBROUTINE ARGUMENT DEFINITIONS:
+
+		// SUBROUTINE PARAMETER DEFINITIONS:
+		// na
+
+		// INTERFACE BLOCK SPECIFICATIONS:
+		// na
+
+		// DERIVED TYPE DEFINITIONS:
+		// na
+
+		// SUBROUTINE LOCAL VARIABLE DECLARATIONS:
+		int ShiftNum; // Loop variable
+
+		for ( ShiftNum = 1; ShiftNum <= m - 1; ++ShiftNum ) {
+			B[ ShiftNum ] = A[ ShiftNum ];
+		}
+
+		for ( ShiftNum = m; ShiftNum <= n; ++ShiftNum ) {
+			B[ ShiftNum ] = A[ ShiftNum + 1 ];
+		}
 	}
 
 

@@ -84,6 +84,13 @@ public: // Methods
 	void
 	reinitAtBeginEnvironment();
 
+	Real64
+	getThermLossRate();
+
+	Real64
+	getACPowerOut();
+
+
 private: //Methods
 	void
 	figureInverterZoneGains();
@@ -134,6 +141,7 @@ private: // Creation
 	ElectricStorage() :
 			maxRainflowArrayBounds( 100 ),
 			maxRainflowArrayInc( 100 ),
+			myWarmUpFlag( false ),
 			storageModelMode( storageTypeNotSet ),
 			availSchedPtr( 0 ),
 			heatLossesDestination( heatLossNotDetermined ),
@@ -220,7 +228,8 @@ public: //methods
 
 	void
 	manageElectCenterStorageInteractions(
-		int const LoadCenterNum, // load center number, index for structure
+		Real64 const powerDemand, // load center power demand minus any inverter losses that need to be applied
+		Real64 const powerGenSupply, // sum of load center generator production
 		Real64 & StorageDrawnPower, // Electric Power Draw Rate from storage units
 		Real64 & StorageStoredPower // Electric Power Store Rate from storage units
 	);
@@ -256,7 +265,7 @@ private: //methods
 		int & count, // calculated here - stored for next timestep in main loop
 		std::vector < Real64 > Nmb, // calculated here - stored for next timestep in main loop
 		std::vector < Real64 > OneNmb, // calculated here - stored for next timestep in main loop
-		int const dim // end dimension of array
+	//	int const dim // end dimension of array
 	);
 
 
@@ -266,7 +275,7 @@ private: //methods
 		int const m,
 		int const n,
 		std::vector < Real64 > B,
-		int const dim // end dimension of arrays
+	//	int const dim // end dimension of arrays
 	);
 
 public: //data
@@ -284,9 +293,9 @@ private: //data
 		batteryLifeCalculationYes,
 		batteryLifeCalculationNo
 	};
-	int const maxRainflowArrayBounds = 100;
+	int maxRainflowArrayBounds;
 	int const maxRainflowArrayInc = 100;
-
+	bool myWarmUpFlag;
 	std::string name; // name of this electrical storage module
 	storageModelTypeEnum storageModelMode; // type of model parameter, SimpleBucketStorage
 	int availSchedPtr; // availability schedule index.
@@ -523,6 +532,7 @@ private: // Creation
 	GeneratorController() :
 		name(""),
 		typeOfName(""),
+		compPlantTypeOf_Num( 0 ),
 		generatorType( generatorNotYetSet ),
 		generatorIndex( 0 ),
 		maxPowerOut( 0.0 ),
@@ -595,7 +605,7 @@ public: // data // might make this class a friend of ElectPowerLoadCenter?
 
 	std::string name; // user identifier
 	std::string typeOfName; // equipment type
-//	int compType_Num; // Numeric designator for CompType (TypeOf)
+	int compPlantTypeOf_Num; // Numeric designator for CompType (TypeOf)
 	generatorTypeEnum generatorType;
 	int generatorIndex; // index in generator model data struct
 	Real64 maxPowerOut; // Maximum Power Output (W)
@@ -692,8 +702,6 @@ private: //Methods
 
 	void
 	calcLoadCenterThermalLoad(
-		bool const firstHVACIteration, // unused1208
-		int const loadCenterNum, // Load Center number counter
 		Real64 & thermalLoad // heat rate called for from cogenerator(watts)
 	);
 
