@@ -90,13 +90,13 @@ namespace ElectricPowerService {
 			if ( this->numPowerOutTransformers > 0 ) {
 				for (auto loopPowerOutTransformers = 0; loopPowerOutTransformers < this->numPowerOutTransformers; ++loopPowerOutTransformers) {
 					//determine surplus production from the load centers connected to this transformer
-					auto loadCenters = this->powerOutTransformerObjs[ loopPowerOutTransformers ]->getLoadCenterObjIndices;
-					for (auto loopLoadCenters = 0; loopLoadCenters < loadCenters.size; ++loopLoadCenters){
+//					auto loadCenters = this->powerOutTransformerObjs[ loopPowerOutTransformers ]->getLoadCenterObjIndices;
+//					for (auto loopLoadCenters = 0; loopLoadCenters < loadCenters.size; ++loopLoadCenters){
 	// this needs to be from takin the total surplus out to utility grid and partitioning out what fraction of that is from the load centers that point to this transformer.  TODO
 	// legacy code is not correct. defer for now. 
 
 	//					this->elecLoadCenterObjs[ loadCenters[ loopLoadCenters ] ]->
-					}
+//					}
 
 				}
 			}
@@ -118,13 +118,13 @@ namespace ElectricPowerService {
 		if ( this->numPowerOutTransformers >0 ){
 				for (auto loopPowerOutTransformers = 0; loopPowerOutTransformers < this->numPowerOutTransformers; ++loopPowerOutTransformers) {
 					//determine surplus production from the load centers connected to this transformer
-					auto loadCenters = this->powerOutTransformerObjs[ loopPowerOutTransformers ]->getLoadCenterObjIndices;
-					for (auto loopLoadCenters = 0; loopLoadCenters < loadCenters.size; ++loopLoadCenters){
+		//			auto loadCenters = this->powerOutTransformerObjs[ loopPowerOutTransformers ]->getLoadCenterObjIndices;
+		//			for (auto loopLoadCenters = 0; loopLoadCenters < loadCenters.size; ++loopLoadCenters){
 	// this needs to be from takin the total surplus out to utility grid and partitioning out what fraction of that is from the load centers that point to this transformer.  TODO
 	// legacy code is not correct. defer for now. 
 
 	//					this->elecLoadCenterObjs[ loadCenters[ loopLoadCenters ] ]->
-					}
+		//			}
 
 				}
 		}
@@ -1160,19 +1160,19 @@ namespace ElectricPowerService {
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_ICEngine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:CombustionTurbine" ) ) {
 			this->generatorType = generatorCombTurbine;
-			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_CTurbine
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_CTurbine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:MicroTurbine" ) ) {
 			this->generatorType = generatorMicroturbine;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroTurbine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:Photovoltaic" ) ) {
 			this->generatorType = generatorPV;
-			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroTurbine
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroTurbine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:FuelCell" ) ) {
 			this->generatorType = generatorFuelCell;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_FCStackCooler;
 		} else if ( InputProcessor::SameString( objectType, "Generator:MicroCHP" ) ) {
 			this->generatorType = generatorMicroCHP;
-			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroCHP
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroCHP;
 		} else if ( InputProcessor::SameString( objectType, "Generator:WindTurbine" ) ) {
 			this->generatorType = generatorWindTurbine;
 		} else {
@@ -1271,7 +1271,7 @@ namespace ElectricPowerService {
 			thermalPowerOutput = this->thermalProdRate;
 			break;
 		}
-		case generatorWindTurbine {
+		case generatorWindTurbine: {
 			WindTurbine::SimWindTurbine( DataGlobalConstants::iGeneratorWindTurbine, this->name, this->generatorIndex, runFlag, myElecLoadRequest );
 			WindTurbine::GetWTGeneratorResults( DataGlobalConstants::iGeneratorWindTurbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
@@ -1964,7 +1964,7 @@ namespace ElectricPowerService {
 						this->maxRainflowArrayBounds += this->maxRainflowArrayInc;
 					}
 
-					this->rainflow( this->cycleBinNum, input0, this->b10, this->x0, this->count0, this->nmb0, this->oneNmb0, this->maxRainflowArrayBounds + 1 );
+					this->rainflow( this->cycleBinNum, input0, this->b10, this->x0, this->count0, this->nmb0, this->oneNmb0);
 
 					this->batteryDamage = 0.0;
 
@@ -2001,7 +2001,7 @@ namespace ElectricPowerService {
 		Real64 c = 0.0;
 		Real64 qmaxf = 0.0;
 		Real64 Ef = 0.0;
-
+		Real64 qmax = 0.0;
 
 
 		// step 1 figure out what is desired of electrical storage system
@@ -2088,7 +2088,7 @@ namespace ElectricPowerService {
 
 					tmpPcharge = ( this->maxEnergyCapacity - this->lastTimeStepStateOfCharge ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour * this->energeticEfficCharge );
 					//     Constrained = .TRUE.
-					this->thisTimeStepStateOfCharge = this->lastTimeStepStateOfCharge + tmpPcharge * DataHVACGlobals::TimeStepSys * DataGlobalsSecInHour * this->energeticEfficCharge;
+					this->thisTimeStepStateOfCharge = this->lastTimeStepStateOfCharge + tmpPcharge * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour * this->energeticEfficCharge;
 				}
 				Pstorage = tmpPcharge;
 
@@ -2099,7 +2099,7 @@ namespace ElectricPowerService {
 			//	int numser = this->seriesNum;
 				numbattery = this->parallelNum * this->seriesNum;
 			//	InternalR = this->internalR;
-				Real64 qmax = this->maxAhCapacity;
+				qmax = this->maxAhCapacity;
 				E0c = this->chargedOCV;
 				Real64 E0d = this->dischargedOCV;
 				k = this->chargeConversionRate;
@@ -2132,8 +2132,8 @@ namespace ElectricPowerService {
 					error = std::abs( Inew - I0 );
 				}
 
-				Real64 dividend = -k * c * qmax + k * this->lastTimeStepAvailable * std::exp( -k * DataHVACGlobals::TimeStepSys ) + q0 * k * c * ( 1.0 - std::exp( -k * TimeStepSys ) );
-				Real64 divisor = 1.0 - std::exp( -k * TimeStepSys ) + c * ( k * TimeStepSys - 1 + std::exp( -k * TimeStepSys ) );
+				Real64 dividend = -k * c * qmax + k * this->lastTimeStepAvailable * std::exp( -k * DataHVACGlobals::TimeStepSys ) + q0 * k * c * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) );
+				Real64 divisor = 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) + c * ( k * DataHVACGlobals::TimeStepSys - 1 + std::exp( -k * TimeStepSys ) );
 				Real64 Imax = dividend / divisor;
 				// Below: This is the limit of charging current from Charge Rate Limit (input)
 				Imax = max( Imax, - ( qmax - q0 ) * this->maxChargeRate );
