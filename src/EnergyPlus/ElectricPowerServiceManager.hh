@@ -79,7 +79,10 @@ public: // Methods
 	);
 
 	void
-	manageInverter( int const LoadCenterNum ); // Load Center number counter
+	manageInverter( 
+		Real64 const powerDCElectProductionRate,
+		Real64 const powerDCElectStorageDrawRate
+	); // Load Center number counter
 
 	void
 	reinitAtBeginEnvironment();
@@ -89,6 +92,9 @@ public: // Methods
 
 	Real64
 	getACPowerOut();
+
+	Real64
+	getACEnergyOut();
 
 
 private: //Methods
@@ -236,6 +242,18 @@ public: //methods
 
 	void
 	reinitAtBeginEnvironment();
+
+	Real64
+	getDrawnPower();
+
+	Real64
+	getStoredPower();
+
+	Real64
+	getDrawnEnergy();
+
+	Real64
+	getStoredEnergy();
 
 private: //methods
 	void
@@ -698,7 +716,8 @@ public: // Methods
 
 private: //Methods
 
-
+	void
+	updateLoadCenterRecords();
 
 	void
 	calcLoadCenterThermalLoad(
