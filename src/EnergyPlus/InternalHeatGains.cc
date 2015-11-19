@@ -46,6 +46,7 @@
 #include <NodeInputManager.hh>
 #include <CurveManager.hh>
 #include <DataHVACGlobals.hh>
+#include <ElectricPowerServiceManager.hh>
 
 namespace EnergyPlus {
 
@@ -3576,9 +3577,10 @@ namespace InternalHeatGains {
 		CalcWaterUseZoneGains();
 		FigureFuelCellZoneGains();
 		FigureMicroCHPZoneGains();
-		FigureInverterZoneGains();
-		FigureElectricalStorageZoneGains();
-		FigureTransformerZoneGains();
+		//FigureInverterZoneGains();
+		//FigureElectricalStorageZoneGains();
+		//FigureTransformerZoneGains();
+		ElectricPowerService::initializeElectricPowerServiceZoneGains();
 		FigureTDDZoneGains();
 		FigureRefrigerationZoneGains();
 

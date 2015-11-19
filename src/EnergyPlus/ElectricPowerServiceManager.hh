@@ -26,6 +26,10 @@ namespace ElectricPowerService {
 		lostToOutside
 	};
 
+	void
+	initializeElectricPowerServiceZoneGains();
+
+
 class DCtoACInverter
 {
 private: // Creation
@@ -87,6 +91,9 @@ public: // Methods
 	void
 	reinitAtBeginEnvironment();
 
+	void
+	reinitZoneGainsAtBeginEnvironment();
+
 	Real64
 	getThermLossRate();
 
@@ -98,8 +105,7 @@ public: // Methods
 
 
 private: //Methods
-	void
-	figureInverterZoneGains();
+
 
 private: // data
 		enum inverterModelTypeEnum {
@@ -243,6 +249,9 @@ public: //methods
 	void
 	reinitAtBeginEnvironment();
 
+	void
+	reinitZoneGainsAtBeginEnvironment();
+
 	Real64
 	getDrawnPower();
 
@@ -256,8 +265,6 @@ public: //methods
 	getStoredEnergy();
 
 private: //methods
-	void
-	FigureElectricalStorageZoneGains();
 
 	bool
 	determineCurrentForBatteryDischarge(
@@ -282,7 +289,7 @@ private: //methods
 		std::vector < Real64 > X, // stores values of two data point difference, calculated here - stored for next timestep
 		int & count, // calculated here - stored for next timestep in main loop
 		std::vector < Real64 > Nmb, // calculated here - stored for next timestep in main loop
-		std::vector < Real64 > OneNmb, // calculated here - stored for next timestep in main loop
+		std::vector < Real64 > OneNmb // calculated here - stored for next timestep in main loop
 	//	int const dim // end dimension of array
 	);
 
@@ -292,7 +299,7 @@ private: //methods
 		std::vector < Real64 > A,
 		int const m,
 		int const n,
-		std::vector < Real64 > B,
+		std::vector < Real64 > B
 	//	int const dim // end dimension of arrays
 	);
 
@@ -328,6 +335,7 @@ private: //data
 	Real64 maxEnergyCapacity; // [J] max storage capacity
 	int parallelNum; // [ ] number of battery modules in parallel
 	int seriesNum; // [ ] number of battery modules in series
+
 	int chargeCurveNum; // [ ] voltage change curve index number for charging
 	int dischargeCurveNum; // [ ] voltage change curve index number for discharging
 	int cycleBinNum; // [ ] number of cycle bins
@@ -462,6 +470,9 @@ public: //methods
 	reinitAtBeginEnvironment();
 
 	void
+	reinitZoneGainsAtBeginEnvironment();
+
+	void
 	addLoadCenterIndex( 
 		int const objectIndex
 	);
@@ -471,11 +482,6 @@ public: //methods
 
 
 private: //methods
-
-	void
-	figureTransformerZoneGains();
-
-
 
 
 private: //data
@@ -706,10 +712,13 @@ public: // Methods
 	);
 
 	void
-	setupMeterIndices();
+	setupLoadCenterMeterIndices();
 
 	void
 	reinitAtBeginEnvironment();
+
+	void
+	reinitZoneGainsAtBeginEnvironment();
 
 	std::string
 	getTransformerName();
@@ -723,9 +732,6 @@ private: //Methods
 	calcLoadCenterThermalLoad(
 		Real64 & thermalLoad // heat rate called for from cogenerator(watts)
 	);
-
-	void
-	ElectPowerLoadCenter::verifyCustomMetersElecPowerMgr();
 
 private: // data
 	enum generatorOpSchemeEnum {
@@ -786,9 +792,6 @@ private: // data
 
 }; //class ElectPowerLoadCenter
 
-
-
-
 class ElectricPowerServiceManager
 {
 
@@ -796,7 +799,7 @@ private: // Creation
 
 	// Default Constructor
 	ElectricPowerServiceManager() :
-			
+			newEnvironmentInternalGainsFlag( true ),
 			getInputFlag( true ),
 			newEnvironmentFlag( true ),
 			numLoadCenters( 0 ),
@@ -849,6 +852,8 @@ public: // Methods
 		bool const UpdateMetersOnly // if true then don't resimulate generators, just update meters.
 	);
 
+	void
+	reinitZoneGainsAtBeginEnvironment();
 
 private: //Methods
 	void
@@ -863,49 +868,48 @@ private: //Methods
 	void
 	updateWholeBuildingRecords();
 
+public: // data
+	bool newEnvironmentInternalGainsFlag;
 
 private: // data
-		bool getInputFlag; // control if object needs to get input and call factory methods
-		bool newEnvironmentFlag; //control if object needs to reinit at beginning of a new environment period
-		int numLoadCenters;
+	bool getInputFlag; // control if object needs to get input and call factory methods
+	bool newEnvironmentFlag; //control if object needs to reinit at beginning of a new environment period
+	int numLoadCenters;
 
-		int numElecStorageDevices;
-		int numTransformers;
-		bool setupMeterIndexFlag;  // control if object needs to make calls to GetMeterIndex
-		int elecFacilityIndex;
-		int elecProducedCoGenIndex;
-		int elecProducedPVIndex;
-		int elecProducedWTIndex;
-		int elecProducedStorageIndex;
-		std::string name;
-		std::vector< std::unique_ptr < ElectPowerLoadCenter > > elecLoadCenterObjs;
-		bool facilityPowerInTransformerPresent;
-		std::string facilityPowerInTransformerName; // hold name for verificaton and error messages
-		std::unique_ptr < ElectricTransformer > facilityPowerInTransformerObj;
-		int numPowerOutTransformers;
-		std::vector< std::string > powerOutTransformerNames;
-		std::vector< std::unique_ptr < ElectricTransformer > > powerOutTransformerObjs;
+	int numElecStorageDevices;
+	int numTransformers;
+	bool setupMeterIndexFlag;  // control if object needs to make calls to GetMeterIndex
+	int elecFacilityIndex;
+	int elecProducedCoGenIndex;
+	int elecProducedPVIndex;
+	int elecProducedWTIndex;
+	int elecProducedStorageIndex;
+	std::string name;
+	std::vector< std::unique_ptr < ElectPowerLoadCenter > > elecLoadCenterObjs;
+	bool facilityPowerInTransformerPresent;
+	std::string facilityPowerInTransformerName; // hold name for verificaton and error messages
+	std::unique_ptr < ElectricTransformer > facilityPowerInTransformerObj;
+	int numPowerOutTransformers;
+	std::vector< std::string > powerOutTransformerNames;
+	std::vector< std::unique_ptr < ElectricTransformer > > powerOutTransformerObjs;
 
-		Real64 wholeBldgRemainingLoad;
-		Real64 electricityProd; // Current Electric Produced from Equipment (J)
-		Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
-		Real64 electricityPurch; // Current Purchased Electric (J)
-		Real64 electPurchRate; // Current Electric Purhcased Rate (W)
-		Real64 electSurplusRate; // Current excess power (W)
-		Real64 electricitySurplus; // Current excess energy (J)
-		Real64 electricityNetRate; // Net elect rate, + is Purchased, - is Surplus (W)
-		Real64 electricityNet; // Net energy, + is Purchased, - is Surplus (J)
-		Real64 totalBldgElecDemand; // Current Total Building Electric Demand (W)
-		Real64 totalHVACElecDemand; // Current Total HVAC Electric Demand (W)
-		Real64 totalElectricDemand; // Current Total Electric Demand (W)
-		Real64 elecProducedPVRate; // Current Rate of PV Produced from the Arrays (W)
-		Real64 elecProducedWTRate; // Current Rate of Wind Turbine Produced (W)
-		Real64 elecProducedStorageRate; // Current Rate of power to(-)/from(+) storage 
+	Real64 wholeBldgRemainingLoad;
+	Real64 electricityProd; // Current Electric Produced from Equipment (J)
+	Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
+	Real64 electricityPurch; // Current Purchased Electric (J)
+	Real64 electPurchRate; // Current Electric Purhcased Rate (W)
+	Real64 electSurplusRate; // Current excess power (W)
+	Real64 electricitySurplus; // Current excess energy (J)
+	Real64 electricityNetRate; // Net elect rate, + is Purchased, - is Surplus (W)
+	Real64 electricityNet; // Net energy, + is Purchased, - is Surplus (J)
+	Real64 totalBldgElecDemand; // Current Total Building Electric Demand (W)
+	Real64 totalHVACElecDemand; // Current Total HVAC Electric Demand (W)
+	Real64 totalElectricDemand; // Current Total Electric Demand (W)
+	Real64 elecProducedPVRate; // Current Rate of PV Produced from the Arrays (W)
+	Real64 elecProducedWTRate; // Current Rate of Wind Turbine Produced (W)
+	Real64 elecProducedStorageRate; // Current Rate of power to(-)/from(+) storage 
 
 }; // class ElectricPowerServiceManager
-
-
-
 
 
 } // ElectricPowerService namespace
