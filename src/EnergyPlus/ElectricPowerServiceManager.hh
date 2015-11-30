@@ -9,7 +9,7 @@
 // ObjexxFCL Headers
 //#include <ObjexxFCL/Array1.hh>
 
-
+// EnergyPlus Headers
 #include <EnergyPlus.hh>
 #include <PlantLocation.hh>
 #include <OutputProcessor.hh>
@@ -702,7 +702,7 @@ public: // Methods
 
 	// Constructor
 	ElectPowerLoadCenter(
-		int objectNum
+		int const objectNum
 	);
 
 	void

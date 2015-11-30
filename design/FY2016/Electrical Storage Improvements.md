@@ -156,23 +156,20 @@ This numeric field is the fraction of zone heat gains that are handled as infrar
 
 A set of output variables will be added for the new AC-to-DC converter.
 
-
 ## Implementation ##
-Source code changes will be made to the existing files ManageElectricPower.hh (1,108 lines) and ManageElectricPower.cc (3,770 lines).  
+Source code changes will be made to new files that will replace the existing files ManageElectricPower.hh (1,108 lines) and ManageElectricPower.cc (3,770 lines) with new object oriented code using smart pointers and classes.   
 
 ### OO Design ###
-A good faith effort will be made to refactor parts of ManageElectricPower to be Object Orented. The new component model for ElectricLoadCenter:Storage:Converter will be implemented using OO techniques. The large manager routine ManageElectricLoadCenters() will be broken up into a number of member functions belonging to a new object.  
-
-However, existing component models for transformer, inverters, and storage will not be refactored.  
+ManageElectricPower will be completely rewritten to be new-style object oriented code.  Development will proceed in two phases with the first phase being a refactor that aims to not reproduce the original code behavior with the intent of showing no numerical differences in tests suites as a check that the refactor has gone well. This includes all the code for transfomer, inverters, storage batteries and all the control and generator dispatch.  Then the second phase will introduce the new features and fixes planned here implemented in the new OO code base.  The new component model for ElectricLoadCenter:Storage:Converter will be implemented using OO techniques. The large manager routine ManageElectricLoadCenters() will be broken up into a number of member functions belonging to a new object.  
 
 ### Data Structures ###
-ManageElectricPower.hh contains the data structures for management, supervisory control, and aggregated reporting of on-site generation , storage, and power conversion (ElecLoadCenter, WholeBldgElectSummary).  It also contains the data structures for component models for transformer, inverter, and storage devices.  The intent is to refactor the data structure ElecLoadCenter into a new object as part of OO refactoring. 
+ManageElectricPower.hh contains the data structures for management, supervisory control, and aggregated reporting of on-site generation , storage, and power conversion (ElecLoadCenter, WholeBldgElectSummary).  It also contains the data structures for component models for transformer, inverter, and storage devices.  These data structures will be refactored to be class data in the new objects for the OO refactoring. 
 
 ## Engineering Reference ##
 
-<insert text>
+Engineering reference will be corrected and expanded to better explain existing and new changes.  
 
-EMS Application Guide updated for new actuators.
+EMS Application Guide will be updated for new actuators.
 
 ## Example File and Transition Changes ##
 

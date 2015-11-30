@@ -170,7 +170,7 @@ namespace ElectricPowerService {
 	if ( this->numLoadCenters > 0 ){
 		for ( auto iLoadCenterNum = 1; iLoadCenterNum <= this->numLoadCenters; ++iLoadCenterNum ){
 			// call Electric Power Load Center constructor, in place
-			this->elecLoadCenterObjs.emplace_back( std::make_unique <ElectPowerLoadCenter > ( iLoadCenterNum) );
+			this->elecLoadCenterObjs.emplace_back( std::make_unique < ElectPowerLoadCenter > ( iLoadCenterNum) );
 		}
 	
 	} else {
@@ -311,7 +311,7 @@ namespace ElectricPowerService {
 	}
 
 	ElectPowerLoadCenter::ElectPowerLoadCenter( // constructor
-		int objectNum
+		int const objectNum
 	)
 	{
 		// initialize 
