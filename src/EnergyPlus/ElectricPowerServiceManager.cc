@@ -510,6 +510,7 @@ namespace ElectricPowerService {
 		Real64 remainingLoad = 0.0;
 		Real64 electricProdRate = 0.0;
 		Real64 thermalProdRate = 0.0;
+		Real64 customMeterDemand = 0.0;
 
 		if( this->generatorsPresent ) {
 
@@ -718,7 +719,7 @@ namespace ElectricPowerService {
 				// The TRACK CUSTOM METER scheme tries to have the generators meet all of the
 				//   electrical demand from a meter, it can also be a user-defined Custom Meter
 				//   and PV is ignored.
-			Real64 customMeterDemand = GetInstantMeterValue( this->demandMeterPtr, 1 ) / DataGlobals::TimeStepZoneSec + GetInstantMeterValue( this->demandMeterPtr, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+			customMeterDemand = GetInstantMeterValue( this->demandMeterPtr, 1 ) / DataGlobals::TimeStepZoneSec + GetInstantMeterValue( this->demandMeterPtr, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 
 			remainingLoad = customMeterDemand;
 			loadCenterElectricLoad = remainingLoad;
@@ -2002,7 +2003,8 @@ namespace ElectricPowerService {
 		Real64 qmaxf = 0.0;
 		Real64 Ef = 0.0;
 		Real64 qmax = 0.0;
-
+		Real64 Pactual = 0.0;
+		Real64 q0 = 0.0;
 
 		// step 1 figure out what is desired of electrical storage system
 
@@ -2133,11 +2135,11 @@ namespace ElectricPowerService {
 				}
 
 				Real64 dividend = -k * c * qmax + k * this->lastTimeStepAvailable * std::exp( -k * DataHVACGlobals::TimeStepSys ) + q0 * k * c * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) );
-				Real64 divisor = 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) + c * ( k * DataHVACGlobals::TimeStepSys - 1 + std::exp( -k * TimeStepSys ) );
+				Real64 divisor = 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) + c * ( k * DataHVACGlobals::TimeStepSys - 1 + std::exp( -k * DataHVACGlobals::TimeStepSys ) );
 				Real64 Imax = dividend / divisor;
 				// Below: This is the limit of charging current from Charge Rate Limit (input)
 				Imax = max( Imax, - ( qmax - q0 ) * this->maxChargeRate );
-				Real64 Pactual = 0.0;
+				
 				if ( std::abs( I0 ) <= std::abs( Imax ) ) {
 					I0 = Pw / Volt;
 					Pactual = I0 * Volt;
@@ -2207,7 +2209,7 @@ namespace ElectricPowerService {
 				} else {
 					I0 = Imax;
 					qmaxf = 10.0; //Initial assumption to solve the equation using iterative method
-					error = 10.0; //Initial assumption ...
+					Real64 error = 10.0; //Initial assumption ...
 					while ( error > 0.001 ) {
 						Real64 RHS = ( qmax * k * c * qmaxf / I0 ) / ( 1.0 - std::exp( -k * qmaxf / I0 ) + c * ( k * qmaxf / I0 - 1 + std::exp( -k * qmaxf / I0 ) ) );
 						error = std::abs( qmaxf - RHS );
@@ -2283,8 +2285,8 @@ namespace ElectricPowerService {
 				Volt = 0.0;
 				q0 = this->lastTimeStepAvailable + this->lastTimeStepBound;
 			} else {
-				Real64 newAvailable = this->lastTimeStepAvailable * std::exp( -k * DataHVACGlobals::TimeStepSys ) + ( q0 * k * c - I0 ) * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k - I0 * c * ( k * TimeStepSys - 1.0 + std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k;
-				Real64 newBound = this->lastTimeStepBound * std::exp( -k * DataHVACGlobals::TimeStepSys ) + q0 * ( 1.0 - c ) * ( 1.0 - std::exp( -k * TimeStepSys ) ) - I0 * ( 1.0 - c ) * ( k * DataHVACGlobals::TimeStepSys - 1.0 + std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k;
+				Real64 newAvailable = this->lastTimeStepAvailable * std::exp( -k * DataHVACGlobals::TimeStepSys ) + ( q0 * k * c - I0 ) * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k - I0 * c * ( k * DataHVACGlobals::TimeStepSys - 1.0 + std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k;
+				Real64 newBound = this->lastTimeStepBound * std::exp( -k * DataHVACGlobals::TimeStepSys ) + q0 * ( 1.0 - c ) * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) ) - I0 * ( 1.0 - c ) * ( k * DataHVACGlobals::TimeStepSys - 1.0 + std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k;
 				this->thisTimeStepAvailable = max( 0.0, newAvailable );
 				this->thisTimeStepBound = max( 0.0, newBound );
 			}
@@ -2475,8 +2477,8 @@ namespace ElectricPowerService {
 			//  upper-level subroutine. However, it does not hurt to leave it here.
 			if ( X[ count ] * X[ count - 1 ] >= 0 ) {
 				X[ count - 1 ] = B1[ count ] - B1[ count - 2 ];
-				this->shift[ B1, count - 1, count, B1, this->maxRainflowArrayBounds + 1 ]; // Get rid of (count-1) row in B1
-				this->shift[ X, count, count, X, this->maxRainflowArrayBounds + 1 ];
+				this->shift( B1, count - 1, count, B1 ); // Get rid of (count-1) row in B1
+				this->shift( X, count, count, X );
 				--count; // If the value keep increasing or decreasing, get rid of the middle point.
 			} // Only valley and peak will be stored in the matrix, B1
 
@@ -2506,11 +2508,11 @@ namespace ElectricPowerService {
 				//     X(count-2) = ABS(X(count))-ABS(X(count-1))+ABS(X(count-2))
 				X[ count - 2 ] = B1[ count ] - B1[ count - 3 ]; // Updating X needs to be done before shift operation below
 
-				this->shift( B1, count - 1, count, B1, this->maxRainflowArrayBounds + 1 ); // Get rid of two data points one by one
-				this->shift( B1, count - 2, count, B1, this->maxRainflowArrayBounds + 1 ); // Delete one point
+				this->shift( B1, count - 1, count, B1 ); // Get rid of two data points one by one
+				this->shift( B1, count - 2, count, B1 ); // Delete one point
 
-				this->shift( X, count, count, X, this->maxRainflowArrayBounds ); // Get rid of two data points one by one
-				this->shift( X, count - 1, count, X, this->maxRainflowArrayBounds ); // Delete one point
+				this->shift( X, count, count, X ); // Get rid of two data points one by one
+				this->shift( X, count - 1, count, X ); // Delete one point
 
 				count -= 2; // If one cycle is counted, two data points are deleted.
 				if ( count < 4 ) break; // When only three data points exists, one cycle cannot be counted.
@@ -2825,7 +2827,7 @@ namespace ElectricPowerService {
 		switch ( this->usageMode )
 		{
 		case powerInFromGrid: {
-			for ( auto meterNum = 1; meterNum <= this->wiredMeterPtrs.size ; ++meterNum ) {
+			for ( auto meterNum = 1; meterNum <= this->wiredMeterPtrs.size(); ++meterNum ) {
 
 				if ( DataGlobals::MetersHaveBeenInitialized ) {
 
