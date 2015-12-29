@@ -48,7 +48,7 @@ set( test_src
   InputProcessor.unit.cc
   KusudaAchenbachGroundTemperatureModel.unit.cc
   LowTempRadiantSystem.unit.cc
-  ManageElectricPower.unit.cc
+  ElectricPowerServiceManager.unit.cc
   MixedAir.unit.cc
   MixerComponent.unit.cc
   PurchasedAirManager.unit.cc

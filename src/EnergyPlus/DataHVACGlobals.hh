@@ -11,7 +11,6 @@
 // EnergyPlus Headers
 #include <EnergyPlus.hh>
 #include <DataGlobals.hh>
-#include <ElectricPowerServiceManager.hh>
 
 namespace EnergyPlus {
 
@@ -511,7 +510,7 @@ namespace DataHVACGlobals {
 	extern OptStartDataType OptStartData; // For optimum start
 	extern Array1D< ComponentSetPtData > CompSetPtEquip;
 
-	extern std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
+
 
 	// Clears the global data in DataHVACGlobals.
 	// Needed for unit tests, should not be normally called.

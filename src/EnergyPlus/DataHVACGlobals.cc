@@ -454,9 +454,6 @@ namespace DataHVACGlobals {
 	OptStartDataType OptStartData; // For optimum start
 	Array1D< ComponentSetPtData > CompSetPtEquip;
 
-	std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
-
-
 
 	// Clears the global data in DataHVACGlobals.
 	// Needed for unit tests, should not be normally called.

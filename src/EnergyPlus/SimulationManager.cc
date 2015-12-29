@@ -65,7 +65,7 @@ extern "C" {
 #include <HVACManager.hh>
 #include <HVACSizingSimulationManager.hh>
 #include <InputProcessor.hh>
-#include <ManageElectricPower.hh>
+#include <ElectricPowerServiceManager.hh>
 #include <MixedAir.hh>
 #include <NodeInputManager.hh>
 #include <OutAirNodeManager.hh>
@@ -367,7 +367,7 @@ namespace SimulationManager {
 			SetupPollutionMeterReporting();
 			UpdateMeterReporting();
 			CheckPollutionMeterReporting();
-			VerifyCustomMetersElecPowerMgr();
+			ElectricPowerService::facilityElectricServiceObj->VerifyCustomMetersElecPowerMgr();
 			SetupPollutionCalculations();
 			InitDemandManagers();
 

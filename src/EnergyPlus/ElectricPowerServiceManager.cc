@@ -35,16 +35,18 @@ namespace EnergyPlus {
 
 namespace ElectricPowerService {
 
+	std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
+
 	void
 	initializeElectricPowerServiceZoneGains() // namespace routine for handling call from InternalHeatGains
 	{
 		//internal zone gains need to be re initialized for begin new environment earlier than the main call into manage electric power service
-		if ( DataHVACGlobals::facilityElectricServiceObj->newEnvironmentInternalGainsFlag && DataGlobals::BeginEnvrnFlag ) {
-			DataHVACGlobals::facilityElectricServiceObj->reinitZoneGainsAtBeginEnvironment();
-			DataHVACGlobals::facilityElectricServiceObj->newEnvironmentInternalGainsFlag =  false;
+		if ( facilityElectricServiceObj->newEnvironmentInternalGainsFlag && DataGlobals::BeginEnvrnFlag ) {
+			facilityElectricServiceObj->reinitZoneGainsAtBeginEnvironment();
+			facilityElectricServiceObj->newEnvironmentInternalGainsFlag =  false;
 		}
 		if ( ! DataGlobals::BeginEnvrnFlag ) {
-			DataHVACGlobals::facilityElectricServiceObj->newEnvironmentInternalGainsFlag = true;
+			facilityElectricServiceObj->newEnvironmentInternalGainsFlag = true;
 		}
 
 	}
@@ -280,6 +282,12 @@ namespace ElectricPowerService {
 				this->powerOutTransformerObjs[ loopOutTransformers ]->reinitAtBeginEnvironment();
 			}
 		}
+	}
+
+	void
+	ElectricPowerServiceManager::verifyCustomMetersElecPowerMgr()
+	{
+		
 	}
 
 	void
@@ -1115,11 +1123,7 @@ namespace ElectricPowerService {
 		}
 	}
 
-//	void
-//	ElectPowerLoadCenter::verifyCustomMetersElecPowerMgr()
-//	{
-	
-//	}
+
 
 	GeneratorController::GeneratorController(
 		std::string objectName,
@@ -2193,7 +2197,7 @@ namespace ElectricPowerService {
 
 				Real64 Pw = tmpPdraw / numbattery;
 				Real64 q0 = this->lastTimeStepAvailable + this->lastTimeStepBound;
-				bool const ok = determineCurrentForBatteryDischarge( I0, T0, Volt, Pw, q0, this->dischargeCurveNum, k, c, qmax, E0c, this->internalR );
+				bool const ok = this->determineCurrentForBatteryDischarge( I0, T0, Volt, Pw, q0, this->dischargeCurveNum, k, c, qmax, E0c, this->internalR );
 				if ( !ok ) {
 					ShowFatalError( "ElectricLoadCenter:Storage:Battery named=\"" + this->name + "\". Battery discharge current could not be estimated due to iteration limit reached. " );
 					//issue #5301, need more diagnostics for this. 

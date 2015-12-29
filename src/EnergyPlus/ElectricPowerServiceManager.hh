@@ -264,8 +264,6 @@ public: //methods
 	Real64
 	getStoredEnergy();
 
-private: //methods
-
 	bool
 	determineCurrentForBatteryDischarge(
 		Real64& curI0,
@@ -280,6 +278,8 @@ private: //methods
 		Real64 const E0c,
 		Real64 const InternalR
 	);
+
+private: //methods
 
 	void
 	rainflow(
@@ -733,6 +733,9 @@ private: //Methods
 		Real64 & thermalLoad // heat rate called for from cogenerator(watts)
 	);
 
+public: // data
+		std::unique_ptr < ElectricStorage > storageObj;
+
 private: // data
 	enum generatorOpSchemeEnum {
 		genOpSchemeNotYetSet,
@@ -776,7 +779,7 @@ private: // data
 	Real64 dCpowerConditionLosses; // current DC to AC inverter losses (W) (if DCbussInverter)
 	bool storagePresent;
 	std::string storageName; // hold name for verificaton and error messages
-	std::unique_ptr < ElectricStorage > storageObj;
+
 	int storageModelNum; // simulation model parameter type
 	bool transformerPresent; // should only be transformers for on-site load center, not facility service 
 	std::string transformerName; // hold name for verificaton and error messages
@@ -855,6 +858,9 @@ public: // Methods
 	void
 	reinitZoneGainsAtBeginEnvironment();
 
+	void
+	verifyCustomMetersElecPowerMgr();
+
 private: //Methods
 	void
 	getPowerManagerInput();
@@ -870,13 +876,14 @@ private: //Methods
 
 public: // data
 	bool newEnvironmentInternalGainsFlag;
+	int numElecStorageDevices;
+	std::vector< std::unique_ptr < ElectPowerLoadCenter > > elecLoadCenterObjs;
 
 private: // data
 	bool getInputFlag; // control if object needs to get input and call factory methods
 	bool newEnvironmentFlag; //control if object needs to reinit at beginning of a new environment period
 	int numLoadCenters;
 
-	int numElecStorageDevices;
 	int numTransformers;
 	bool setupMeterIndexFlag;  // control if object needs to make calls to GetMeterIndex
 	int elecFacilityIndex;
@@ -885,7 +892,7 @@ private: // data
 	int elecProducedWTIndex;
 	int elecProducedStorageIndex;
 	std::string name;
-	std::vector< std::unique_ptr < ElectPowerLoadCenter > > elecLoadCenterObjs;
+
 	bool facilityPowerInTransformerPresent;
 	std::string facilityPowerInTransformerName; // hold name for verificaton and error messages
 	std::unique_ptr < ElectricTransformer > facilityPowerInTransformerObj;
@@ -911,6 +918,7 @@ private: // data
 
 }; // class ElectricPowerServiceManager
 
+	extern std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
 
 } // ElectricPowerService namespace
 

@@ -38,7 +38,6 @@
 #include <HVACStandAloneERV.hh>
 #include <IceThermalStorage.hh>
 #include <InternalHeatGains.hh>
-#include <ManageElectricPower.hh>
 #include <NodeInputManager.hh>
 #include <NonZoneEquipmentManager.hh>
 #include <OutAirNodeManager.hh>
@@ -62,6 +61,7 @@
 #include <ZoneEquipmentManager.hh>
 #include <ZoneTempPredictorCorrector.hh>
 #include <HVACSizingSimulationManager.hh>
+#include <ElectricPowerServiceManager.hh>
 
 namespace EnergyPlus {
 
@@ -238,7 +238,6 @@ namespace HVACManager {
 		using DataContaminantBalance::ZoneAirGCAvg;
 		using DataContaminantBalance::OutdoorGC;
 		using ScheduleManager::GetCurrentScheduleValue;
-		using ManageElectricPower::ManageElectricLoadCenters;
 		using InternalHeatGains::UpdateInternalGainValues;
 		using ZoneEquipmentManager::CalcAirFlowSimple;
 		using DataGlobals::KindOfSim;
@@ -447,7 +446,7 @@ namespace HVACManager {
 			ManageWater();
 			// update electricity data for net, purchased, sold etc.
 			DummyLogical = false;
-			DataHVACGlobals::facilityElectricServiceObj->manageElectricPowerService( false, DummyLogical, true );
+			ElectricPowerService::facilityElectricServiceObj->manageElectricPowerService( false, DummyLogical, true );
 
 			// Update the plant and condenser loop capacitance model temperature history.
 			UpdateNodeThermalHistory();
@@ -596,7 +595,6 @@ namespace HVACManager {
 		using SystemAvailabilityManager::ManageSystemAvailability;
 		using ZoneEquipmentManager::ManageZoneEquipment;
 		using NonZoneEquipmentManager::ManageNonZoneEquipment;
-		using ManageElectricPower::ManageElectricLoadCenters;
 		using DataEnvironment::EnvironmentName;
 		using DataEnvironment::CurMnDy;
 		using General::CreateSysTimeIntervalString;
@@ -735,7 +733,7 @@ namespace HVACManager {
 			ManageZoneEquipment( FirstHVACIteration, SimZoneEquipmentFlag, SimAirLoopsFlag );
 			// need to call non zone equipment so water use zone gains can be included in sizing calcs
 			ManageNonZoneEquipment( FirstHVACIteration, SimNonZoneEquipmentFlag );
-			DataHVACGlobals::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
+			ElectricPowerService::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
 			//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuitsFlag, false );
 			return;
 		}
@@ -1471,7 +1469,6 @@ namespace HVACManager {
 		using NonZoneEquipmentManager::ManageNonZoneEquipment;
 		using SimAirServingZones::ManageAirLoops;
 		using PlantManager::ManagePlantLoops;
-		using ManageElectricPower::ManageElectricLoadCenters;
 		using AirflowNetworkBalanceManager::ManageAirflowNetworkBalance;
 		using DataErrorTracking::AskForPlantCheckOnAbort;
 		using PlantUtilities::SetAllFlowLocks;
@@ -1541,13 +1538,13 @@ namespace HVACManager {
 			ManageZoneEquipment( FirstHVACIteration, SimZoneEquipment, SimAirLoops );
 			SimZoneEquipment = true; //needs to be simulated at least twice for flow resolution to propagate to this routine
 			ManageNonZoneEquipment( FirstHVACIteration, SimNonZoneEquipment );
-			DataHVACGlobals::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
+			ElectricPowerService::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
 			//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
 
 			ManagePlantLoops( FirstHVACIteration, SimAirLoops, SimZoneEquipment, SimNonZoneEquipment, SimPlantLoops, SimElecCircuits );
 
 			AskForPlantCheckOnAbort = true; // need to make a first pass through plant calcs before this check make sense
-			DataHVACGlobals::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
+			ElectricPowerService::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
 			//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
 		} else {
 			FlowResolutionNeeded = false;
@@ -1606,7 +1603,7 @@ namespace HVACManager {
 			}
 
 			if ( SimElecCircuits ) {
-				DataHVACGlobals::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
+				ElectricPowerService::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
 				//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
 			}
 
@@ -1623,7 +1620,7 @@ namespace HVACManager {
 			}
 
 			if ( SimElecCircuits ) {
-				DataHVACGlobals::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
+				ElectricPowerService::facilityElectricServiceObj->manageElectricPowerService( FirstHVACIteration, SimElecCircuitsFlag, false );
 				//ManageElectricLoadCenters( FirstHVACIteration, SimElecCircuits, false );
 			}
 

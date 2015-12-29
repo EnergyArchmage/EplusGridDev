@@ -332,8 +332,6 @@ SET( SRC_2
   InternalHeatGains.hh
   LowTempRadiantSystem.cc
   LowTempRadiantSystem.hh
-  ManageElectricPower.cc
-  ManageElectricPower.hh
   MatrixDataManager.cc
   MatrixDataManager.hh
   MicroCHPElectricGenerator.cc
