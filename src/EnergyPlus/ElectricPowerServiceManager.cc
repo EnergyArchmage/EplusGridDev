@@ -287,7 +287,9 @@ namespace ElectricPowerService {
 	void
 	ElectricPowerServiceManager::verifyCustomMetersElecPowerMgr()
 	{
-		
+		for ( auto loop = 0; loop < this->elecLoadCenterObjs.size(); ++loop ) {
+			this->elecLoadCenterObjs[ loop ]->setupLoadCenterMeterIndices();
+		}
 	}
 
 	void

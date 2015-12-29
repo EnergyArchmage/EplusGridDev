@@ -235,7 +235,6 @@ namespace SimulationManager {
 		using BranchInputManager::ManageBranchInput;
 		using BranchInputManager::TestBranchIntegrity;
 		using BranchInputManager::InvalidBranchDefinitions;
-		using ManageElectricPower::VerifyCustomMetersElecPowerMgr;
 		using MixedAir::CheckControllerLists;
 		using EMSManager::CheckIfAnyEMS;
 		using EMSManager::ManageEMS;
@@ -367,7 +366,7 @@ namespace SimulationManager {
 			SetupPollutionMeterReporting();
 			UpdateMeterReporting();
 			CheckPollutionMeterReporting();
-			ElectricPowerService::facilityElectricServiceObj->VerifyCustomMetersElecPowerMgr();
+			ElectricPowerService::facilityElectricServiceObj->verifyCustomMetersElecPowerMgr();
 			SetupPollutionCalculations();
 			InitDemandManagers();
 
