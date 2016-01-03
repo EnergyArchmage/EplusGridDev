@@ -29,7 +29,6 @@
 #include <General.hh>
 #include <HeatBalanceInternalHeatGains.hh>
 #include <InputProcessor.hh>
-#include <ManageElectricPower.hh>
 #include <MicroCHPElectricGenerator.hh>
 #include <OutputProcessor.hh>
 #include <OutputReportPredefined.hh>
@@ -3220,9 +3219,6 @@ namespace InternalHeatGains {
 		using WaterUse::CalcWaterUseZoneGains;
 		using FuelCellElectricGenerator::FigureFuelCellZoneGains;
 		using MicroCHPElectricGenerator::FigureMicroCHPZoneGains;
-		using ManageElectricPower::FigureInverterZoneGains;
-		using ManageElectricPower::FigureElectricalStorageZoneGains;
-		using ManageElectricPower::FigureTransformerZoneGains;
 		using DaylightingDevices::FigureTDDZoneGains;
 		using RefrigeratedCase::FigureRefrigerationZoneGains;
 		using OutputReportTabular::radiantPulseUsed;
@@ -3577,9 +3573,6 @@ namespace InternalHeatGains {
 		CalcWaterUseZoneGains();
 		FigureFuelCellZoneGains();
 		FigureMicroCHPZoneGains();
-		//FigureInverterZoneGains();
-		//FigureElectricalStorageZoneGains();
-		//FigureTransformerZoneGains();
 		ElectricPowerService::initializeElectricPowerServiceZoneGains();
 		FigureTDDZoneGains();
 		FigureRefrigerationZoneGains();
