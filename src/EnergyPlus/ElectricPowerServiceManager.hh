@@ -30,6 +30,7 @@ namespace ElectricPowerService {
 	initializeElectricPowerServiceZoneGains();
 
 
+
 class DCtoACInverter
 {
 private: // Creation
@@ -798,7 +799,7 @@ private: // data
 class ElectricPowerServiceManager
 {
 
-private: // Creation
+public: // Creation
 
 	// Default Constructor
 	ElectricPowerServiceManager() :
@@ -920,7 +921,11 @@ private: // data
 
 	extern std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
 
+	void
+	createFacilityElectricPowerServiceObject();
+
 } // ElectricPowerService namespace
+
 
 } // EnergyPlus namespace
 #endif //ElectricPowerServiceManager_hh_INCLUDED

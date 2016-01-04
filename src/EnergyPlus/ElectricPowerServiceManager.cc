@@ -1,6 +1,7 @@
 
 // C++ Headers
 #include <vector>
+#include <memory>
 
 // ObjexxFCL Headers
 #include <ObjexxFCL/Array1.hh>
@@ -33,9 +34,17 @@
 
 namespace EnergyPlus {
 
+
+
 namespace ElectricPowerService {
 
 	std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
+
+	void
+	createFacilityElectricPowerServiceObject()
+	{
+		facilityElectricServiceObj = std::unique_ptr< ElectricPowerServiceManager >( new ElectricPowerServiceManager() );
+	}
 
 	void
 	initializeElectricPowerServiceZoneGains() // namespace routine for handling call from InternalHeatGains
@@ -2749,7 +2758,7 @@ namespace ElectricPowerService {
 				this->specialMeter.resize( numWiredMeters, false );
 
 				//Meter check deferred because they may have not been "loaded" yet,
-				for ( auto loopCount = 1; loopCount <= numWiredMeters; ++loopCount ) {
+				for ( auto loopCount = 0; loopCount < numWiredMeters; ++loopCount ) {
 					this->wiredMeterNames[ loopCount ] = InputProcessor::MakeUPPERCase( DataIPShortCuts::cAlphaArgs( loopCount + numAlphaBeforeMeter ) );
 					//Assign SpecialMeter as TRUE if the meter name is Electricity:Facility or Electricity:HVAC
 					if ( InputProcessor::SameString( this->wiredMeterNames[ loopCount ], "Electricity:Facility" ) || InputProcessor::SameString( this->wiredMeterNames[ loopCount ], "Electricity:HVAC" ) ) {
@@ -2833,7 +2842,7 @@ namespace ElectricPowerService {
 		switch ( this->usageMode )
 		{
 		case powerInFromGrid: {
-			for ( auto meterNum = 1; meterNum <= this->wiredMeterPtrs.size(); ++meterNum ) {
+			for ( auto meterNum = 0; meterNum < this->wiredMeterPtrs.size(); ++meterNum ) {
 
 				if ( DataGlobals::MetersHaveBeenInitialized ) {
 
@@ -2972,7 +2981,7 @@ namespace ElectricPowerService {
 	ElectricTransformer::setupMeterIndices()
 	{
 		if (this->usageMode == powerInFromGrid ) {
-			for ( auto meterNum = 1; meterNum <= this->wiredMeterNames.size(); ++meterNum ) {
+			for ( auto meterNum = 0; meterNum < this->wiredMeterNames.size(); ++meterNum ) {
 
 				this->wiredMeterPtrs[ meterNum ] = GetMeterIndex( this->wiredMeterNames[ meterNum ] );
 

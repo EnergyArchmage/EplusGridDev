@@ -6,6 +6,7 @@
 
 // EnergyPlus Headers
 #include <EnergyPlus.hh>
+#include <ElectricPowerServiceManager.hh>
 
 namespace EnergyPlus {
 
