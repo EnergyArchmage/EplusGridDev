@@ -250,7 +250,7 @@ namespace ElectricPowerService {
 		elecProducedStorageIndex = EnergyPlus::GetMeterIndex( "ElectricStorage:ElectricityProduced" );
 
 		if ( this->numLoadCenters > 0 ){
-			for( auto loopLoadCenters = 1; loopLoadCenters <= this->numLoadCenters; ++loopLoadCenters ){
+			for( auto loopLoadCenters = 0; loopLoadCenters < this->numLoadCenters; ++loopLoadCenters ){
 				elecLoadCenterObjs[ loopLoadCenters ]->setupLoadCenterMeterIndices();
 			}
 		}
@@ -279,7 +279,7 @@ namespace ElectricPowerService {
 		this->elecProducedStorageRate = 0.0;
 
 		if ( this->numLoadCenters > 0 ){
-			for( auto loopLoadCenters = 1; loopLoadCenters <= this->numLoadCenters; ++loopLoadCenters ){
+			for( auto loopLoadCenters = 0; loopLoadCenters < this->numLoadCenters; ++loopLoadCenters ){
 				elecLoadCenterObjs[ loopLoadCenters ]->reinitAtBeginEnvironment();
 			}
 		}
@@ -1005,7 +1005,7 @@ namespace ElectricPowerService {
 		this->electDemand              = 0.0;
 
 		if ( this->generatorsPresent ) {
-			for ( auto genLoop=1; genLoop<= this->numGenerators; ++genLoop ) {
+			for ( auto genLoop=0; genLoop< this->numGenerators; ++genLoop ) {
 				this->elecGenCntrlObj[ genLoop ]->reinitAtBeginEnvironment();
 			}
 		}
