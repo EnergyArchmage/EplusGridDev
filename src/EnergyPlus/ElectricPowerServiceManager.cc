@@ -468,7 +468,9 @@ namespace ElectricPowerService {
 		if ( ! DataIPShortCuts::lAlphaFieldBlanks( 9 ) ) {
 			// process transformer
 			this->transformerName = DataIPShortCuts::cAlphaFieldNames( 9 );
-			this->transformerPresent =  true;
+			// only transformers of use type powerFromLoadCenterToBldg are really held in a load center, The legacy applications for transformers are held at the higher Electric service level
+	//TODO add handling of Load center to building buss transfers
+			//this->transformerPresent =  true;
 		}
 
 		// now that we are done with processing get input for ElectricLoadCenter:Distribution we can call child input objects without IP shortcut problems
@@ -2667,7 +2669,10 @@ namespace ElectricPowerService {
 			} else if ( InputProcessor::SameString(DataIPShortCuts::cAlphaArgs( 3 ), "PowerInFromGrid" ) ) {
 				this->usageMode = powerInFromGrid;
 			} else if ( InputProcessor::SameString(DataIPShortCuts::cAlphaArgs( 3 ), "PowerOutFromOnsiteGeneration" ) ) {
-				this->usageMode = powerOutFromBldg;
+				this->usageMode = powerOutFromBldgToGrid;
+			} else if ( InputProcessor::SameString(DataIPShortCuts::cAlphaArgs( 3 ), "LoadCenterProductionConditioning" ) ) {
+				this->usageMode = powerFromLoadCenterToBldg;
+
 			} else {
 					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
 					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " = " + DataIPShortCuts::cAlphaArgs( 3 ) );
@@ -2868,7 +2873,7 @@ namespace ElectricPowerService {
 			this->powerOut = elecLoad; //the metered value is transformer's output in PowerInFromGrid mode
 			break;
 		}
-		case powerOutFromBldg: {
+		case powerOutFromBldgToGrid : {
 			this->powerIn = surplusPowerOutFromLoadCenters;
 			break;
 		}
@@ -2940,7 +2945,7 @@ namespace ElectricPowerService {
 			break;
 		}
 
-		case powerOutFromBldg: {
+		case powerOutFromBldgToGrid: {
 			this->powerOut = elecLoad - totalLossRate;
 
 			if ( this->powerOut < 0 ) this->powerOut = 0.0;

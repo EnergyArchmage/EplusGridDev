@@ -489,8 +489,9 @@ private: //data
 
 	enum transformerUseEnum {
 		useNotYetSet,
-		powerInFromGrid,
-		powerOutFromBldg
+		powerInFromGrid, // condition power from grid going into building buss
+		powerOutFromBldgToGrid, // condition power from building buss going out to grid
+		powerFromLoadCenterToBldg // condition power from a load center going into building buss
 	};
 	enum transformerPerformanceInputEnum {
 		perfInputMethodNotSet,
@@ -819,6 +820,7 @@ public: // Creation
 			name( "Whole Building" ),
 			facilityPowerInTransformerPresent( false ),
 			facilityPowerInTransformerName( ""),
+			numPowerOutTransformers( 0 ),
 			wholeBldgRemainingLoad( 0.0 ),
 			electricityProd( 0.0 ),
 			electProdRate( 0.0 ),
