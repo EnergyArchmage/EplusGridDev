@@ -1,4 +1,4 @@
-// EnergyPlus, Copyright (c) 1996-2015, The Board of Trustees of the University of Illinois and
+// EnergyPlus, Copyright (c) 1996-2016, The Board of Trustees of the University of Illinois and
 // The Regents of the University of California, through Lawrence Berkeley National Laboratory
 // (subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights
 // reserved.
@@ -250,6 +250,14 @@ namespace ElectricPowerService {
 	} else {
 // TODO check that the distribution object isn't just missing but is needed. #issue 4639
 	
+
+			// if user input did not include an Electric Load center, create a simple default one here for reporting purposes
+		//   but only if there are any other electricity components set up (yet) for metering
+		int anyElectricityPresent = GetMeterIndex( "ELECTRICITY:FACILITY" );
+		if ( anyElectricityPresent > 0 ) {
+			this->elecLoadCenterObjs.emplace_back( std::make_unique < ElectPowerLoadCenter > ( 0 ) );
+			this->numLoadCenters = 1;
+		}
 	}
 
 	// see if there is a transformer of the type powerInFromGrid
@@ -301,7 +309,27 @@ namespace ElectricPowerService {
 		}
 	}
 
+	if ( this->numLoadCenters > 0 ) { 
+		SetupOutputVariable( "Facility Total Purchased Electric Power [W]", this->electPurchRate, "System", "Average", this->name );
+		SetupOutputVariable( "Facility Total Purchased Electric Energy [J]", this->electricityPurch, "System", "Sum", this->name, _, "ElectricityPurchased", "COGENERATION", _, "Plant" );
+
+		SetupOutputVariable( "Facility Total Surplus Electric Energy [J]", this->electricitySurplus, "System", "Sum", this->name, _, "ElectricitySurplusSold", "COGENERATION", _, "Plant" );
+
+		SetupOutputVariable( "Facility Net Purchased Electric Power [W]", this->electricityNetRate, "System", "Average", this->name );
+		SetupOutputVariable( "Facility Net Purchased Electric Energy [J]", this->electricityNet, "System", "Sum", this->name, _, "ElectricityNet", "COGENERATION", _, "Plant" );
+
+		SetupOutputVariable( "Facility Total Building Electric Demand Power [W]", this->totalBldgElecDemand, "System", "Average", this->name );
+		SetupOutputVariable( "Facility Total HVAC Electric Demand Power [W]", this->totalHVACElecDemand, "System", "Average", this->name );
+		SetupOutputVariable( "Facility Total Electric Demand Power [W]", this->totalElectricDemand, "System", "Average", this->name );
+
+		SetupOutputVariable( "Facility Total Produced Electric Power [W]", this->electProdRate, "System", "Average", this->name );
+		SetupOutputVariable( "Facility Total Produced Electric Energy [J]", this->electricityProd, "System", "Sum", this->name );
+
 	}
+
+
+	}
+
 
 	void
 	ElectricPowerServiceManager::setupMeterIndices()
@@ -575,6 +603,21 @@ namespace ElectricPowerService {
 
 			//this->transformerObj = std::make_unique< ElectricTransformer >( this->transformerName  );
 		}
+
+		//Setup general output variables for reporting in the electric load center
+
+
+		SetupOutputVariable( "Electric Load Center Produced Electric Power [W]", this->electProdRate, "System", "Average", this->name );
+
+		SetupOutputVariable( "Electric Load Center Produced Electric Energy [J]", this->electricityProd, "System", "Sum", this->name );
+
+		SetupOutputVariable( "Electric Load Center Produced Thermal Rate [W]", this->thermalProdRate, "System", "Average", this->name );
+
+		SetupOutputVariable( "Electric Load Center Produced Thermal Energy [J]", this->thermalProd, "System", "Sum", this->name );
+
+		SetupOutputVariable( "Electric Load Center Requested Electric Power [W]", this->totalPowerRequest, "System", "Average", this->name );
+
+
 	}
 
 	void
