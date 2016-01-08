@@ -1,3 +1,61 @@
+// EnergyPlus, Copyright (c) 1996-2015, The Board of Trustees of the University of Illinois and
+// The Regents of the University of California, through Lawrence Berkeley National Laboratory
+// (subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights
+// reserved.
+//
+// If you have questions about your rights to use or distribute this software, please contact
+// Berkeley Lab's Innovation & Partnerships Office at IPO@lbl.gov.
+//
+// NOTICE: This Software was developed under funding from the U.S. Department of Energy and the
+// U.S. Government consequently retains certain rights. As such, the U.S. Government has been
+// granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable,
+// worldwide license in the Software to reproduce, distribute copies to the public, prepare
+// derivative works, and perform publicly and display publicly, and to permit others to do so.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted
+// provided that the following conditions are met:
+//
+// (1) Redistributions of source code must retain the above copyright notice, this list of
+//     conditions and the following disclaimer.
+//
+// (2) Redistributions in binary form must reproduce the above copyright notice, this list of
+//     conditions and the following disclaimer in the documentation and/or other materials
+//     provided with the distribution.
+//
+// (3) Neither the name of the University of California, Lawrence Berkeley National Laboratory,
+//     the University of Illinois, U.S. Dept. of Energy nor the names of its contributors may be
+//     used to endorse or promote products derived from this software without specific prior
+//     written permission.
+//
+// (4) Use of EnergyPlus(TM) Name. If Licensee (i) distributes the software in stand-alone form
+//     without changes from the version obtained under this License, or (ii) Licensee makes a
+//     reference solely to the software portion of its product, Licensee must refer to the
+//     software as "EnergyPlus version X" software, where "X" is the version number Licensee
+//     obtained under this License and may not use a different name for the software. Except as
+//     specifically required in this Section (4), Licensee shall not use in a company name, a
+//     product name, in advertising, publicity, or other promotional activities any name, trade
+//     name, trademark, logo, or other designation of "EnergyPlus", "E+", "e+" or confusingly
+//     similar designation, without Lawrence Berkeley National Laboratory's prior written consent.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//
+// You are under no obligation whatsoever to provide any bug fixes, patches, or upgrades to the
+// features, functionality or performance of the source code ("Enhancements") to anyone; however,
+// if you choose to make your Enhancements available either publicly, or directly to Lawrence
+// Berkeley National Laboratory, without imposing a separate written license agreement for such
+// Enhancements, then you hereby grant the following license: a non-exclusive, royalty-free
+// perpetual license to install, use, modify, prepare derivative works, incorporate into other
+// computer software, distribute, and sublicense such enhancements or derivative works thereof,
+// in binary and source code form.
+
 #ifndef ElectricPowerServiceManager_hh_INCLUDED
 #define ElectricPowerServiceManager_hh_INCLUDED
 
@@ -107,6 +165,9 @@ public: // Methods
 
 private: //Methods
 
+public: // data public for unit test
+		Real64 aCPowerOut;
+		Real64 aCEnergyOut;
 
 private: // data
 		enum inverterModelTypeEnum {
@@ -135,9 +196,9 @@ private: // data
 		//results and reporting
 		Real64 efficiency;
 		Real64 dCPowerIn;
-		Real64 aCPowerOut;
+
 		Real64 dCEnergyIn;
-		Real64 aCEnergyOut;
+
 		Real64 thermLossRate;
 		Real64 thermLossEnergy;
 		Real64 qdotConvZone;
@@ -304,7 +365,11 @@ private: //methods
 	//	int const dim // end dimension of arrays
 	);
 
-public: //data
+public: //data public for unit tests
+	Real64 storedPower; // [W]
+	Real64 storedEnergy; // [J]
+	Real64 drawnPower; // [W]
+	Real64 drawnEnergy; // [J]
 
 private: //data
 
@@ -379,11 +444,8 @@ private: //data
 	std::vector < Real64 > oneNmb0;
 	//report
 	Real64 electEnergyinStorage; // [J] state of charge
-	Real64 storedPower; // [W]
-	Real64 storedEnergy; // [J]
 	Real64 decrementedEnergyStored; // [J] this is the negative of StoredEnergy
-	Real64 drawnPower; // [W]
-	Real64 drawnEnergy; // [J]
+
 	Real64 thermLossRate; // [W]
 	Real64 thermLossEnergy; // [J]
 	int storageMode; // [ ] mode of operation 0 for idle, 1 for discharging, 2 for charging
@@ -670,12 +732,12 @@ private: // Creation
 		trackSchedPtr( 0 ),
 		bussType( bussNotYetSet ),
 		inverterPresent( false ),
-		inverterModelNum( 0 ),
+//		inverterModelNum( 0 ),
 		dCElectricityProd( 0.0 ),
 		dCElectProdRate( 0.0 ),
 		dCpowerConditionLosses( 0.0 ),
 		storagePresent( false ),
-		storageModelNum( 0 ),
+//		storageModelNum( 0 ),
 		transformerPresent( false ),
 		transformerModelNum( 0 ),
 		electricityProd( 0.0 ),
@@ -725,18 +787,39 @@ public: // Methods
 	std::string
 	getTransformerName();
 
-private: //Methods
-
 	void
 	updateLoadCenterRecords();
+
+private: //Methods
+
+
 
 	void
 	calcLoadCenterThermalLoad(
 		Real64 & thermalLoad // heat rate called for from cogenerator(watts)
 	);
 
-public: // data
-		std::unique_ptr < ElectricStorage > storageObj;
+public: // data public for unit test
+	enum electricBussTypeEnum {
+		bussNotYetSet,
+		aCBuss,
+		dCBussInverter,
+		aCBussStorage,
+		dCBussInverterDCStorage,
+		dCBussInverterACStorage
+	};
+	std::unique_ptr < ElectricStorage > storageObj;  
+//	int storageModelNum; // simulation model parameter type
+	int numGenerators; // Number of Generators
+	std::vector < std::unique_ptr <GeneratorController> > elecGenCntrlObj; // generator controller objects
+	electricBussTypeEnum bussType; // is this load center powered by AC or DC generators
+	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
+	Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
+	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
+	Real64 thermalProdRate; // Current Thermal energy Production Rate from Equipment (W)
+	bool inverterPresent;
+	std::string inverterName; // hold name for verificaton and error messages
+	std::unique_ptr < DCtoACInverter > inverterObj;
 
 private: // data
 	enum generatorOpSchemeEnum {
@@ -750,14 +833,7 @@ private: // data
 		genOpSchemeThermalFollowLimitElectrical
 	};
 
-	enum electricBussTypeEnum {
-		bussNotYetSet,
-		aCBuss,
-		dCBussInverter,
-		aCBussStorage,
-		dCBussInverterDCStorage,
-		dCBussInverterACStorage
-	};
+
 
 	std::string name; // user identifier
 	std::string generatorListName; // List name of available generators
@@ -766,31 +842,26 @@ private: // data
 	int demandMeterPtr; // "pointer" to Meter for electrical Demand to meet
 	std::string generationMeterName; // Name of Generated Energy Meter for "on demand" operation
 	bool generatorsPresent; // true if any generators
-	int numGenerators; // Number of Generators
-	std::vector < std::unique_ptr <GeneratorController> > elecGenCntrlObj; // generator controller objects
+//	int numGenerators; // Number of Generators
+//	std::vector < std::unique_ptr <GeneratorController> > elecGenCntrlObj; // generator controller objects
 	bool myCoGenSetupFlag;
 	Real64 demandLimit; // Demand Limit in Watts(W) which the generator will operate above
 	int trackSchedPtr; // "pointer" to schedule for electrical demand to meet.
-	electricBussTypeEnum bussType; // is this load center powered by AC or DC generators
-	bool inverterPresent;
-	std::string inverterName; // hold name for verificaton and error messages
-	std::unique_ptr < DCtoACInverter > inverterObj;
-	int inverterModelNum; // simulation model parameter type
+
+
+//	int inverterModelNum; // simulation model parameter type
 	Real64 dCElectricityProd; // Current DC Elect produced (J) (if buss type DCbussInverter)
 	Real64 dCElectProdRate; // Current DC Elect power produced (W) (if buss type DCbussInverter)
 	Real64 dCpowerConditionLosses; // current DC to AC inverter losses (W) (if DCbussInverter)
 	bool storagePresent;
 	std::string storageName; // hold name for verificaton and error messages
 
-	int storageModelNum; // simulation model parameter type
+
 	bool transformerPresent; // should only be transformers for on-site load center, not facility service 
 	std::string transformerName; // hold name for verificaton and error messages
 	std::unique_ptr < ElectricTransformer > transformerObj;
 	int transformerModelNum; // simulation model parameter type
-	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
-	Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
-	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
-	Real64 thermalProdRate; // Current Thermal energy Production Rate from Equipment (W)
+
 	Real64 totalPowerRequest; // Total electric power request from the load center (W)
 	Real64 totalThermalPowerRequest; // Total thermal power request from the load center (W)
 	Real64 electDemand; // Current electric power demand on the load center (W)
@@ -925,6 +996,9 @@ private: // data
 
 	void
 	createFacilityElectricPowerServiceObject();
+
+	void
+	clear_state();
 
 } // ElectricPowerService namespace
 

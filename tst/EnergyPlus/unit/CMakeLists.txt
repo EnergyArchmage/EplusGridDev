@@ -23,6 +23,7 @@ set( test_src
   DemandResponse.unit.cc
   DOASEffectOnZoneSizing.unit.cc
   DXCoils.unit.cc
+  ElectricPowerServiceManager.unit.cc
   EMSManager.unit.cc
   EvaporativeCoolers.unit.cc
   ExteriorEnergyUse.unit.cc
@@ -50,7 +51,6 @@ set( test_src
   InputProcessor.unit.cc
   KusudaAchenbachGroundTemperatureModel.unit.cc
   LowTempRadiantSystem.unit.cc
-  ElectricPowerServiceManager.unit.cc
   MixedAir.unit.cc
   MixerComponent.unit.cc
   NodeInputManager.unit.cc
