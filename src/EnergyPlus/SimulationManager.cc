@@ -109,6 +109,7 @@ extern "C" {
 #include <DualDuct.hh>
 #include <EconomicLifeCycleCost.hh>
 #include <EconomicTariff.hh>
+#include <ElectricPowerServiceManager.hh>
 #include <EMSManager.hh>
 #include <ExteriorEnergyUse.hh>
 #include <ExternalInterface.hh>
@@ -123,7 +124,6 @@ extern "C" {
 #include <HVACManager.hh>
 #include <HVACSizingSimulationManager.hh>
 #include <InputProcessor.hh>
-#include <ElectricPowerServiceManager.hh>
 #include <MixedAir.hh>
 #include <NodeInputManager.hh>
 #include <OutAirNodeManager.hh>

@@ -81,17 +81,134 @@ using namespace DataGlobals;
 
 TEST_F( EnergyPlusFixture, ManageElectricPowerTest_BatteryDischargeTest )
 {
+
+	std::string const idf_objects = delimited_string( { 
+	"Version,8.4;",
+  "ElectricLoadCenter:Distribution,",
+"    PV Array Load Center,    !- Name",
+"    Generator List,          !- Generator List Name",
+"    TrackElectrical,         !- Generator Operation Scheme Type",
+"    0,                       !- Demand Limit Scheme Purchased Electric Demand Limit {W}",
+"    ,                        !- Track Schedule Name Scheme Schedule Name",
+"    ,                        !- Track Meter Scheme Meter Name",
+"    DirectCurrentWithInverterDCStorage,  !- Electrical Buss Type",
+"    PV Inverter,             !- Inverter Object Name",
+"    Kibam;                   !- Electrical Storage Object Name",
+
+"  Curve:DoubleExponentialDecay,",
+"    Doubleexponential,       !- Name",
+"    1380,                    !- Coefficient1 C1",
+"    6834,                    !- Coefficient2 C2",
+"    -8.75,                   !- Coefficient3 C3",
+"    6747,                    !- Coefficient3 C4",
+"    -6.22,                   !- Coefficient3 C5",
+"    0,                       !- Minimum Value of x",
+"    1,                       !- Maximum Value of x",
+"    ,                        !- Minimum Curve Output",
+"    ,                        !- Maximum Curve Output",
+"    Dimensionless,           !- Input Unit Type for x",
+"    Dimensionless;           !- Output Unit Type",
+
+"  ElectricLoadCenter:Storage:Battery,",
+"    Kibam,                   !- Name",
+"    ALWAYS_ON,               !- Availability Schedule Name",
+"    ,                        !- Zone Name",
+"    0,                       !- Radiative Fraction",
+"    10,                      !- Number of Battery Modules in Parallel",
+"    10,                      !- Number of Battery Modules in Series",
+"    86.1,                    !- Maximum Module Capacity {Ah}",
+"    0.7,                     !- Initial Fractional State of Charge",
+"    0.37,                    !- Fraction of Available Charge Capacity",
+"    0.5874,                  !- Change Rate from Bound Charge to Available Charge {1/hr}",
+"    12.6,                    !- Fully Charged Module Open Circuit Voltage {V}",
+"    12.4,                    !- Fully Discharged Module Open Circuit Voltage {V}",
+"    charging,                !- Voltage Change Curve Name for Charging",
+"    discharging,             !- Voltage Change Curve Name for Discharging",
+"    0.054,                   !- Module Internal Electrical Resistance {ohms}",
+"    100,                     !- Maximum Module Discharging Current {A}",
+"    10,                      !- Module Cut-off Voltage {V}",
+"    1,                       !- Module Charge Rate Limit",
+"    Yes,                     !- Battery Life Calculation",
+"    5,                       !- Number of Cycle Bins",
+"    Doubleexponential;       !- Battery Life Curve Name",
+
+"  Curve:RectangularHyperbola2,",
+"    charging,                !- Name",
+"    -.2765,                  !- Coefficient1 C1",
+"    -93.27,                  !- Coefficient2 C2",
+"    0.0068,                  !- Coefficient3 C3",
+"    0,                       !- Minimum Value of x",
+"    1,                       !- Maximum Value of x",
+"    -100,                    !- Minimum Curve Output",
+"    100,                     !- Maximum Curve Output",
+"    Dimensionless,           !- Input Unit Type for x",
+"    Dimensionless;           !- Output Unit Type",
+
+"  Curve:RectangularHyperbola2,",
+"    discharging,             !- Name",
+"    0.0899,                  !- Coefficient1 C1",
+"    -98.24,                  !- Coefficient2 C2",
+"    -.0082,                  !- Coefficient3 C3",
+"    0,                       !- Minimum Value of x",
+"    1,                       !- Maximum Value of x",
+"    -100,                    !- Minimum Curve Output",
+"    100,                     !- Maximum Curve Output",
+"    Dimensionless,           !- Input Unit Type for x",
+"    Dimensionless;           !- Output Unit Type",
+
+"  ElectricLoadCenter:Inverter:LookUpTable,",
+"    PV Inverter,             !- Name",
+"    ALWAYS_ON,               !- Availability Schedule Name",
+"    ,                        !- Zone Name",
+"    0.25,                    !- Radiative Fraction",
+"    14000,                   !- Rated Maximum Continuous Output Power {W}",
+"    200.0,                   !- Night Tare Loss Power {W}",
+"    368,                     !- Nominal Voltage Input {V}",
+"    0.839,                   !- Efficiency at 10% Power and Nominal Voltage",
+"    0.897,                   !- Efficiency at 20% Power and Nominal Voltage",
+"    0.916,                   !- Efficiency at 30% Power and Nominal Voltage",
+"    0.931,                   !- Efficiency at 50% Power and Nominal Voltage",
+"    0.934,                   !- Efficiency at 75% Power and Nominal Voltage",
+"    0.930;                   !- Efficiency at 100% Power and Nominal Voltage",
+
+"  ElectricLoadCenter:Generators,",
+"    Generator List,          !- Name",
+"    PV:ZN_1_FLR_1_SEC_1_Ceiling,  !- Generator 1 Name",
+"    Generator:Photovoltaic,  !- Generator 1 Object Type",
+"    9000.0,                  !- Generator 1 Rated Electric Power Output {W}",
+"    ALWAYS_ON,               !- Generator 1 Availability Schedule Name",
+"    ;                        !- Generator 1 Rated Thermal to Electrical Power Ratio",
+"    ;                        !- Generator 5 Rated Thermal to Electrical Power Ratio",
+
+"  Generator:Photovoltaic,",
+"    PV:ZN_1_FLR_1_SEC_1_Ceiling,  !- Name",
+"    ZN_1_FLR_1_SEC_1_Ceiling,!- Surface Name",
+"    PhotovoltaicPerformance:Simple,  !- Photovoltaic Performance Object Type",
+"    20percentEffPVhalfArea,  !- Module Performance Name",
+"    Decoupled,               !- Heat Transfer Integration Mode",
+"    1.0,                     !- Number of Series Strings in Parallel {dimensionless}",
+"    1.0;                     !- Number of Modules in Series {dimensionless}",
+
+"  PhotovoltaicPerformance:Simple,",
+"    20percentEffPVhalfArea,  !- Name",
+"    0.5,                     !- Fraction of Surface Area with Active Solar Cells {dimensionless}",
+"    Fixed,                   !- Conversion Efficiency Input Mode",
+"    0.20,                    !- Value for Cell Efficiency if Fixed",
+"    ;                        !- Efficiency Schedule Name",
+
+"  Schedule:Compact,",
+"    ALWAYS_ON,               !- Name",
+"    On/Off,                  !- Schedule Type Limits Name",
+"    Through: 12/31,          !- Field 1",
+"    For: AllDays,            !- Field 2",
+"    Until: 24:00,1;          !- Field 3",
+	} );
+
+	ASSERT_FALSE( process_idf( idf_objects ) );
+
 	ElectricPowerService::createFacilityElectricPowerServiceObject();
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs.emplace_back( std::make_unique < ElectricPowerService::ElectPowerLoadCenter > ( 1 ) );
-	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->storageObj = std::make_unique< ElectricPowerService::ElectricStorage >(  "Test Storage"  );
 
-	NumCurves = 1;
-	PerfCurve.allocate( NumCurves );
-	PerfCurve( 1 ).CurveType = CurveType_RectangularHyperbola1;
-	PerfCurve( 1 ).InterpolationType = EvaluateCurveToLimits;
-	PerfCurve( 1 ).Coeff1 = 0.0899;
-	PerfCurve( 1 ).Coeff2 = -98.24;
-	PerfCurve( 1 ).Coeff3 = -.0082;
 	int CurveNum1 = 1;
 	Real64 k = 0.5874;
 	Real64 c = 0.37;
@@ -115,7 +232,6 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_BatteryDischargeTest )
 
 	EXPECT_FALSE( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->storageObj->determineCurrentForBatteryDischarge( I0, T0, Volt, Pw, q0, CurveNum1, k, c, qmax, E0c, InternalR ) );
 
-	PerfCurve.deallocate();
 }
 
 TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords )

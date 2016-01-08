@@ -432,108 +432,110 @@ namespace ElectricPowerService {
 
 		DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Distribution";
 		errorsFound = false;
-		InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, objectNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+		if ( objectNum > 0 ) {
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, objectNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
 
-		this->name          = DataIPShortCuts::cAlphaArgs( 1 );
-		// how to verify names are unique across objects? add to GlobalNames?
+			this->name          = DataIPShortCuts::cAlphaArgs( 1 );
+			// how to verify names are unique across objects? add to GlobalNames?
 
-		this->generatorListName = DataIPShortCuts::cAlphaArgs( 2 );
+			this->generatorListName = DataIPShortCuts::cAlphaArgs( 2 );
 
-		//Load the Generator Control Operation Scheme
-		if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "Baseload" ) ) {
-			this->genOperationScheme = genOpSchemeBaseLoad;
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "DemandLimit" ) ) {
-			this->genOperationScheme = genOpSchemeDemandLimit;
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "TrackElectrical" ) ) {
-			this->genOperationScheme = genOpSchemeTrackElectrical;
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "TrackSchedule" ) ) {
-			this->genOperationScheme = genOpSchemeTrackSchedule;
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "TrackMeter" ) ) {
-			this->genOperationScheme =  genOpSchemeTrackMeter;
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "FollowThermal" ) ) {
-			this->genOperationScheme = genOpSchemeThermalFollow;
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "FollowThermalLimitElectrical" ) ) {
-			this->genOperationScheme =  genOpSchemeThermalFollowLimitElectrical;
-		} else {
-			ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
-			ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " = " + DataIPShortCuts::cAlphaArgs( 3 ) );
-			errorsFound = true;
-		}
-
-		this->demandLimit = DataIPShortCuts::rNumericArgs( 1 );
-
-		this->trackSchedPtr = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 4 ) );
-		if ( ( this->trackSchedPtr == 0 ) && ( this->genOperationScheme == genOpSchemeTrackSchedule ) ) {
-			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 4 ) ) {
-				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
-				ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + " = " + DataIPShortCuts::cAlphaArgs( 4 ) );
+			//Load the Generator Control Operation Scheme
+			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "Baseload" ) ) {
+				this->genOperationScheme = genOpSchemeBaseLoad;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "DemandLimit" ) ) {
+				this->genOperationScheme = genOpSchemeDemandLimit;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "TrackElectrical" ) ) {
+				this->genOperationScheme = genOpSchemeTrackElectrical;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "TrackSchedule" ) ) {
+				this->genOperationScheme = genOpSchemeTrackSchedule;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "TrackMeter" ) ) {
+				this->genOperationScheme =  genOpSchemeTrackMeter;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "FollowThermal" ) ) {
+				this->genOperationScheme = genOpSchemeThermalFollow;
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "FollowThermalLimitElectrical" ) ) {
+				this->genOperationScheme =  genOpSchemeThermalFollowLimitElectrical;
 			} else {
 				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
-				ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + " = blank field." );
-			}
-			ShowContinueError( "Schedule not found; Must be entered and valid when Generator Operation Scheme=TrackSchedule" );
-			errorsFound = true;
-		}
-
-		this->demandMeterName = InputProcessor::MakeUPPERCase( DataIPShortCuts::cAlphaArgs( 5 ) );
-			// meters may not be "loaded" yet, defered check to later subroutine
-
-		if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "AlternatingCurrent" ) ) {
-			this->bussType = aCBuss;
-			DataIPShortCuts::cAlphaArgs( 6 ) = "AlternatingCurrent";
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "DirectCurrentWithInverter" ) ) {
-			this->bussType  = dCBussInverter;
-			this->inverterPresent = true;
-			DataIPShortCuts::cAlphaArgs( 6 ) = "DirectCurrentWithInverter";
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "AlternatingCurrentWithStorage" ) ) {
-			this->bussType  = aCBussStorage;
-			this->storagePresent = true;
-			DataIPShortCuts::cAlphaArgs( 6 ) = "AlternatingCurrentWithStorage";
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "DirectCurrentWithInverterDCStorage" ) ) {
-			this->bussType  = dCBussInverterDCStorage;
-			this->inverterPresent = true;
-			this->storagePresent = true;
-			DataIPShortCuts::cAlphaArgs( 6 ) = "DirectCurrentWithInverterDCStorage";
-		} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "DirectCurrentWithInverterACStorage" ) ) {
-			this->bussType  = dCBussInverterACStorage;
-			this->inverterPresent = true;
-			this->storagePresent = true;
-			DataIPShortCuts::cAlphaArgs( 6 ) = "DirectCurrentWithInverterACStorage";
-		} else if ( DataIPShortCuts::cAlphaArgs( 6 ).empty() ) {
-			this->bussType  = aCBuss;
-			DataIPShortCuts::cAlphaArgs( 6 ) = "AlternatingCurrent (field was blank)";
-		} else {
-			ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
-			ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 6 ) + " = " + DataIPShortCuts::cAlphaArgs( 6 ) );
-			errorsFound = true;
-		}
-
-		if ( this->inverterPresent ) {
-			if ( !  DataIPShortCuts::lAlphaFieldBlanks( 7 ) ) {
-				this->inverterName = DataIPShortCuts::cAlphaFieldNames( 7 );
-			} else {
-				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
-				ShowContinueError( DataIPShortCuts::cAlphaFieldNames( 7 ) + " is blank, but buss type requires inverter.");
+				ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " = " + DataIPShortCuts::cAlphaArgs( 3 ) );
 				errorsFound = true;
 			}
-		}
 
-		if ( this->storagePresent ) {
-			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 8 ) ) {
-				this->storageName = DataIPShortCuts::cAlphaFieldNames( 8 );
-			} else {
-				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
-				ShowContinueError( DataIPShortCuts::cAlphaFieldNames( 8 ) + " is blank, but buss type requires storage.");
+			this->demandLimit = DataIPShortCuts::rNumericArgs( 1 );
+
+			this->trackSchedPtr = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 4 ) );
+			if ( ( this->trackSchedPtr == 0 ) && ( this->genOperationScheme == genOpSchemeTrackSchedule ) ) {
+				if ( ! DataIPShortCuts::lAlphaFieldBlanks( 4 ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + " = " + DataIPShortCuts::cAlphaArgs( 4 ) );
+				} else {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + " = blank field." );
+				}
+				ShowContinueError( "Schedule not found; Must be entered and valid when Generator Operation Scheme=TrackSchedule" );
 				errorsFound = true;
 			}
-		}
 
-		if ( ! DataIPShortCuts::lAlphaFieldBlanks( 9 ) ) {
-			// process transformer
-			this->transformerName = DataIPShortCuts::cAlphaFieldNames( 9 );
-			// only transformers of use type powerFromLoadCenterToBldg are really held in a load center, The legacy applications for transformers are held at the higher Electric service level
-	//TODO add handling of Load center to building buss transfers
-			//this->transformerPresent =  true;
+			this->demandMeterName = InputProcessor::MakeUPPERCase( DataIPShortCuts::cAlphaArgs( 5 ) );
+				// meters may not be "loaded" yet, defered check to later subroutine
+
+			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "AlternatingCurrent" ) ) {
+				this->bussType = aCBuss;
+				DataIPShortCuts::cAlphaArgs( 6 ) = "AlternatingCurrent";
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "DirectCurrentWithInverter" ) ) {
+				this->bussType  = dCBussInverter;
+				this->inverterPresent = true;
+				DataIPShortCuts::cAlphaArgs( 6 ) = "DirectCurrentWithInverter";
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "AlternatingCurrentWithStorage" ) ) {
+				this->bussType  = aCBussStorage;
+				this->storagePresent = true;
+				DataIPShortCuts::cAlphaArgs( 6 ) = "AlternatingCurrentWithStorage";
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "DirectCurrentWithInverterDCStorage" ) ) {
+				this->bussType  = dCBussInverterDCStorage;
+				this->inverterPresent = true;
+				this->storagePresent = true;
+				DataIPShortCuts::cAlphaArgs( 6 ) = "DirectCurrentWithInverterDCStorage";
+			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "DirectCurrentWithInverterACStorage" ) ) {
+				this->bussType  = dCBussInverterACStorage;
+				this->inverterPresent = true;
+				this->storagePresent = true;
+				DataIPShortCuts::cAlphaArgs( 6 ) = "DirectCurrentWithInverterACStorage";
+			} else if ( DataIPShortCuts::cAlphaArgs( 6 ).empty() ) {
+				this->bussType  = aCBuss;
+				DataIPShortCuts::cAlphaArgs( 6 ) = "AlternatingCurrent (field was blank)";
+			} else {
+				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+				ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 6 ) + " = " + DataIPShortCuts::cAlphaArgs( 6 ) );
+				errorsFound = true;
+			}
+
+			if ( this->inverterPresent ) {
+				if ( !  DataIPShortCuts::lAlphaFieldBlanks( 7 ) ) {
+					this->inverterName = DataIPShortCuts::cAlphaArgs( 7 );
+				} else {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( DataIPShortCuts::cAlphaFieldNames( 7 ) + " is blank, but buss type requires inverter.");
+					errorsFound = true;
+				}
+			}
+
+			if ( this->storagePresent ) {
+				if ( ! DataIPShortCuts::lAlphaFieldBlanks( 8 ) ) {
+					this->storageName = DataIPShortCuts::cAlphaArgs( 8 );
+				} else {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( DataIPShortCuts::cAlphaFieldNames( 8 ) + " is blank, but buss type requires storage.");
+					errorsFound = true;
+				}
+			}
+
+			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 9 ) ) {
+				// process transformer
+				this->transformerName = DataIPShortCuts::cAlphaArgs( 9 );
+				// only transformers of use type powerFromLoadCenterToBldg are really held in a load center, The legacy applications for transformers are held at the higher Electric service level
+		//TODO add handling of Load center to building buss transfers
+				//this->transformerPresent =  true;
+			}
 		}
 
 		// now that we are done with processing get input for ElectricLoadCenter:Distribution we can call child input objects without IP shortcut problems
