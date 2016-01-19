@@ -1065,7 +1065,7 @@ namespace ElectricPowerService {
 			}
 
 	//TODO should be		this->inverterObj->manageInverter( this->dCElectProdRate, storageDrawnPower - storageStoredPower );
-			this->inverterObj->manageInverter( this->dCElectProdRate, 0.0 ); //legacy I think is not right.
+			this->inverterObj->manageInverter( this->dCElectProdRate, ( storageDrawnPower - storageStoredPower ) ); //legacy I think is not right. made the change here
 		}
 		if ( ( this->storagePresent ) && ( ( this->bussType == dCBussInverterACStorage ) || ( this->bussType == aCBussStorage ) ) ) {
 			Real64 pcuLosses = 0.0;

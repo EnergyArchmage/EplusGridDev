@@ -370,6 +370,7 @@ public: //data public for unit tests
 	Real64 storedEnergy; // [J]
 	Real64 drawnPower; // [W]
 	Real64 drawnEnergy; // [J]
+	Real64 decrementedEnergyStored; // [J] this is the negative of StoredEnergy
 
 private: //data
 
@@ -444,7 +445,7 @@ private: //data
 	std::vector < Real64 > oneNmb0;
 	//report
 	Real64 electEnergyinStorage; // [J] state of charge
-	Real64 decrementedEnergyStored; // [J] this is the negative of StoredEnergy
+
 
 	Real64 thermLossRate; // [W]
 	Real64 thermLossEnergy; // [J]
