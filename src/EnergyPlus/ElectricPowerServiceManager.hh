@@ -168,6 +168,18 @@ private: //Methods
 public: // data public for unit test
 		Real64 aCPowerOut;
 		Real64 aCEnergyOut;
+		//results and reporting
+		Real64 efficiency;
+		Real64 dCPowerIn;
+
+		Real64 dCEnergyIn;
+
+		Real64 thermLossRate;
+		Real64 thermLossEnergy;
+		Real64 qdotConvZone;
+		Real64 qdotRadZone;
+		Real64 ancillACuseRate;
+		Real64 ancillACuseEnergy;
 
 private: // data
 		enum inverterModelTypeEnum {
@@ -193,18 +205,7 @@ private: // data
 		Real64 minEfficiency;
 		Real64 maxEfficiency;
 		Real64 standbyPower;
-		//results and reporting
-		Real64 efficiency;
-		Real64 dCPowerIn;
 
-		Real64 dCEnergyIn;
-
-		Real64 thermLossRate;
-		Real64 thermLossEnergy;
-		Real64 qdotConvZone;
-		Real64 qdotRadZone;
-		Real64 ancillACuseRate;
-		Real64 ancillACuseEnergy;
 
 }; //DCtoACInverter
 

@@ -334,11 +334,11 @@ namespace ElectricPowerService {
 	void
 	ElectricPowerServiceManager::setupMeterIndices()
 	{
-		elecFacilityIndex        = EnergyPlus::GetMeterIndex( "Electricity:Facility" );
-		elecProducedCoGenIndex   = EnergyPlus::GetMeterIndex( "Cogeneration:ElectricityProduced" );
-		elecProducedPVIndex      = EnergyPlus::GetMeterIndex( "Photovoltaic:ElectricityProduced" );
-		elecProducedWTIndex      = EnergyPlus::GetMeterIndex( "WindTurbine:ElectricityProduced" );
-		elecProducedStorageIndex = EnergyPlus::GetMeterIndex( "ElectricStorage:ElectricityProduced" );
+		this->elecFacilityIndex        = EnergyPlus::GetMeterIndex( "Electricity:Facility" );
+		this->elecProducedCoGenIndex   = EnergyPlus::GetMeterIndex( "Cogeneration:ElectricityProduced" );
+		this->elecProducedPVIndex      = EnergyPlus::GetMeterIndex( "Photovoltaic:ElectricityProduced" );
+		this->elecProducedWTIndex      = EnergyPlus::GetMeterIndex( "WindTurbine:ElectricityProduced" );
+		this->elecProducedStorageIndex = EnergyPlus::GetMeterIndex( "ElectricStorage:ElectricityProduced" );
 
 		if ( this->numLoadCenters > 0 ){
 			for( auto loopLoadCenters = 0; loopLoadCenters < this->numLoadCenters; ++loopLoadCenters ){
@@ -1064,8 +1064,9 @@ namespace ElectricPowerService {
 				this->dCElectProdRate += this->elecGenCntrlObj[ loopGen ]->dCElectProdRate;
 			}
 
-	//TODO should be		this->inverterObj->manageInverter( this->dCElectProdRate, storageDrawnPower - storageStoredPower );
-			this->inverterObj->manageInverter( this->dCElectProdRate, ( storageDrawnPower - storageStoredPower ) ); //legacy I think is not right. made the change here
+	//TODO should be		this->inverterObj->manageInverter( this->dCElectProdRate, storageDrawnPower - storageStoredPower ); found doing this seemed to double count power from inverter and storage discharge
+
+			this->inverterObj->manageInverter( this->dCElectProdRate, 0.0 ); //legacy I think is not right
 		}
 		if ( ( this->storagePresent ) && ( ( this->bussType == dCBussInverterACStorage ) || ( this->bussType == aCBussStorage ) ) ) {
 			Real64 pcuLosses = 0.0;
@@ -1292,7 +1293,7 @@ namespace ElectricPowerService {
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroTurbine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:Photovoltaic" ) ) {
 			this->generatorType = generatorPV;
-			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroTurbine;
+			this->compPlantTypeOf_Num = DataPlant::TypeOf_PVTSolarCollectorFlatPlate;
 		} else if ( InputProcessor::SameString( objectType, "Generator:FuelCell" ) ) {
 			this->generatorType = generatorFuelCell;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_FCStackCooler;
@@ -1621,6 +1622,7 @@ namespace ElectricPowerService {
 	)
 	{
 		this->dCPowerIn = powerDCElectProductionRate + powerDCElectNetStorageDrawRate;
+		this->dCEnergyIn = this->dCPowerIn * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 			// check availability schedule
 		if ( ScheduleManager::GetCurrentScheduleValue( this->availSchedPtr ) > 0.0 ) {
 			Real64 tempACPower = 0.0;
