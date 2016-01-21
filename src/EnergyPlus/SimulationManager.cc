@@ -377,7 +377,6 @@ namespace SimulationManager {
 		CheckIfAnyBasements();
 		CheckIfAnyIdealCondEntSetPoint();
 		ElectricPowerService::createFacilityElectricPowerServiceObject();
-	//	facilityElectricServiceObj = std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager >( new ElectricPowerService::ElectricPowerServiceManager() );
 
 		ManageBranchInput(); // just gets input and returns.
 
