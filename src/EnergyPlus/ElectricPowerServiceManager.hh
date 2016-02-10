@@ -94,6 +94,18 @@ class DCtoACInverter
 private: // Creation
 	// Default Constructor
 		DCtoACInverter() :
+			aCPowerOut( 0.0 ),
+			aCEnergyOut( 0.0 ),
+			efficiency( 0.0 ),
+			dCPowerIn( 0.0 ),
+			dCEnergyIn( 0.0 ),
+			thermLossRate( 0.0 ),
+			thermLossEnergy( 0.0 ),
+			qdotConvZone( 0.0 ),
+			qdotRadZone( 0.0 ),
+			ancillACuseRate( 0.0 ),
+			ancillACuseEnergy( 0.0 ),
+			name( ""),
 			modelType( notYetSet ),
 			availSchedPtr( 0 ),
 			heatLossesDestination( heatLossNotDetermined ),
@@ -108,18 +120,8 @@ private: // Creation
 			maxPower( 0.0 ),
 			minEfficiency( 0.0 ),
 			maxEfficiency( 0.0 ),
-			standbyPower( 0.0 ),
-			efficiency( 0.0 ),
-			dCPowerIn( 0.0 ),
-			aCPowerOut( 0.0 ),
-			dCEnergyIn( 0.0 ),
-			aCEnergyOut( 0.0 ),
-			thermLossRate( 0.0 ),
-			thermLossEnergy( 0.0 ),
-			qdotConvZone( 0.0 ),
-			qdotRadZone( 0.0 ),
-			ancillACuseRate( 0.0 ),
-			ancillACuseEnergy( 0.0 )
+			standbyPower( 0.0 )
+
 		{}
 
 	// Copy Constructor
@@ -214,9 +216,15 @@ class ElectricStorage
 private: // Creation
 	// Default Constructor
 	ElectricStorage() :
+			storedPower( 0.0 ),
+			storedEnergy( 0.0 ),
+			drawnPower( 0.0 ),
+			drawnEnergy( 0.0 ),
+			decrementedEnergyStored( 0.0 ),
 			maxRainflowArrayBounds( 100 ),
 			maxRainflowArrayInc( 100 ),
 			myWarmUpFlag( false ),
+			name( "" ),
 			storageModelMode( storageTypeNotSet ),
 			availSchedPtr( 0 ),
 			heatLossesDestination( heatLossNotDetermined ),
@@ -230,6 +238,7 @@ private: // Creation
 			maxEnergyCapacity( 0.0 ),
 			parallelNum( 0 ),
 			seriesNum( 0 ),
+			numBattery( 0 ),
 			chargeCurveNum( 0 ),
 			dischargeCurveNum( 0 ),
 			cycleBinNum( 0 ),
@@ -265,11 +274,7 @@ private: // Creation
 			lastTwoTimeStepBound( 0.0 ),
 			count0( 0 ),
 			electEnergyinStorage( 0.0 ),
-			storedPower( 0.0 ),
-			storedEnergy( 0.0 ),
-			decrementedEnergyStored( 0.0 ),
-			drawnPower( 0.0 ),
-			drawnEnergy( 0.0 ),
+
 			thermLossRate( 0.0 ),
 			thermLossEnergy( 0.0 ),
 			storageMode( 0 ),
@@ -403,7 +408,7 @@ private: //data
 	Real64 maxEnergyCapacity; // [J] max storage capacity
 	int parallelNum; // [ ] number of battery modules in parallel
 	int seriesNum; // [ ] number of battery modules in series
-
+	int numBattery; // total number of batteries all together
 	int chargeCurveNum; // [ ] voltage change curve index number for charging
 	int dischargeCurveNum; // [ ] voltage change curve index number for discharging
 	int cycleBinNum; // [ ] number of cycle bins
@@ -464,6 +469,8 @@ class ElectricTransformer
 private: // Creation
 	// Default Constructor
 		ElectricTransformer() :
+			numLoadCenters( 0 ),
+			name( " "),
 			myOneTimeFlag( true ),
 			availSchedPtr( 0 ),
 			usageMode( useNotYetSet ),
@@ -483,7 +490,7 @@ private: // Creation
 			considerLosses( true ),
 			ratedNL( 0.0 ),
 			ratedLL( 0.0 ),
-			numLoadCenters( 0 ),
+
 			overloadErrorIndex( 0 ),
 			efficiency( 0.0 ),
 			powerIn( 0.0 ),
@@ -548,7 +555,9 @@ public: //methods
 
 private: //methods
 
-
+public: 
+	int numLoadCenters; // number of load centers served by the transformer
+	std::vector < int > loadCenterObjIndexes; // index array of load centers served by the transformer
 private: //data
 
 	enum transformerUseEnum {
@@ -590,8 +599,8 @@ private: //data
 	//calculated and from elsewhere vars
 	Real64 ratedNL; // rated no load losses, user input or calculated [W]
 	Real64 ratedLL; // rated load losses, user input or calculated [W]
-	int numLoadCenters; // number of load centers served by the transformer
-	std::vector < int > loadCenterObjIndexes; // index array of load centers served by the transformer
+
+
 	int overloadErrorIndex; // used for warning message when transformer is overloaded
 	//results and reporting
 	Real64 efficiency; // transformer efficiency
@@ -620,12 +629,14 @@ class GeneratorController
 private: // Creation
 	// Default Constructor
 	GeneratorController() :
-		name(""),
-		typeOfName(""),
+		name( "" ),
+		typeOfName( "" ),
+		compGenTypeOf_Num( 0 ),
 		compPlantTypeOf_Num( 0 ),
 		generatorType( generatorNotYetSet ),
 		generatorIndex( 0 ),
 		maxPowerOut( 0.0 ),
+		availSched( " " ),
 		availSchedPtr( 0 ),
 		powerRequestThisTimestep( 0.0 ),
 		onThisTimestep( false ),
@@ -695,7 +706,8 @@ public: // data // might make this class a friend of ElectPowerLoadCenter?
 
 	std::string name; // user identifier
 	std::string typeOfName; // equipment type
-	int compPlantTypeOf_Num; // Numeric designator for CompType (TypeOf)
+	int compGenTypeOf_Num; // Numeric designator for generator CompType (TypeOf), in DataGlobalConstants
+	int compPlantTypeOf_Num; // numeric designator for plant component, in DataPlant
 	generatorTypeEnum generatorType;
 	int generatorIndex; // index in generator model data struct
 	Real64 maxPowerOut; // Maximum Power Output (W)
@@ -723,32 +735,38 @@ class ElectPowerLoadCenter
 private: // Creation
 	// Default Constructor
 	ElectPowerLoadCenter() :
+		numGenerators( 0 ),
+		bussType( bussNotYetSet ),
+		electricityProd( 0.0 ),
+		electProdRate( 0.0 ),
+		thermalProd( 0.0 ),
+		thermalProdRate( 0.0 ),
+		inverterPresent( false ),
+		inverterName( " "),
+		electDemand( 0.0 ),
 		name( ""),
 		generatorListName( ""),
 		genOperationScheme( genOpSchemeNotYetSet ),
 		demandMeterPtr( 0 ),
 		generatorsPresent( false ),
-		numGenerators( 0 ),
+
 		myCoGenSetupFlag( true ),
 		demandLimit( 0.0 ),
 		trackSchedPtr( 0 ),
-		bussType( bussNotYetSet ),
-		inverterPresent( false ),
-//		inverterModelNum( 0 ),
+
+
 		dCElectricityProd( 0.0 ),
 		dCElectProdRate( 0.0 ),
 		dCpowerConditionLosses( 0.0 ),
 		storagePresent( false ),
-//		storageModelNum( 0 ),
+		storageName ( "" ),
 		transformerPresent( false ),
-		transformerModelNum( 0 ),
-		electricityProd( 0.0 ),
-		electProdRate( 0.0 ),
-		thermalProd( 0.0 ),
-		thermalProdRate( 0.0 ),
+		transformerName( "" ),
+
+
 		totalPowerRequest( 0.0 ),
-		totalThermalPowerRequest( 0.0 ),
-		electDemand( 0.0 )
+		totalThermalPowerRequest( 0.0 )
+
 	{}
 
 	// Copy Constructor
@@ -822,6 +840,7 @@ public: // data public for unit test
 	bool inverterPresent;
 	std::string inverterName; // hold name for verificaton and error messages
 	std::unique_ptr < DCtoACInverter > inverterObj;
+	Real64 electDemand; // Current electric power demand on the load center (W)
 
 private: // data
 	enum generatorOpSchemeEnum {
@@ -862,11 +881,11 @@ private: // data
 	bool transformerPresent; // should only be transformers for on-site load center, not facility service 
 	std::string transformerName; // hold name for verificaton and error messages
 	std::unique_ptr < ElectricTransformer > transformerObj;
-	int transformerModelNum; // simulation model parameter type
+
 
 	Real64 totalPowerRequest; // Total electric power request from the load center (W)
 	Real64 totalThermalPowerRequest; // Total thermal power request from the load center (W)
-	Real64 electDemand; // Current electric power demand on the load center (W)
+
 
 }; //class ElectPowerLoadCenter
 
@@ -878,11 +897,10 @@ public: // Creation
 	// Default Constructor
 	ElectricPowerServiceManager() :
 			newEnvironmentInternalGainsFlag( true ),
+			numElecStorageDevices( 0 ),
 			getInputFlag( true ),
 			newEnvironmentFlag( true ),
 			numLoadCenters( 0 ),
-
-			numElecStorageDevices( 0 ),
 			numTransformers( 0 ),
 			setupMeterIndexFlag( true ),
 			elecFacilityIndex( 0 ),
@@ -892,7 +910,7 @@ public: // Creation
 			elecProducedStorageIndex( 0 ),
 			name( "Whole Building" ),
 			facilityPowerInTransformerPresent( false ),
-			facilityPowerInTransformerName( ""),
+			facilityPowerInTransformerName( "" ),
 			numPowerOutTransformers( 0 ),
 			wholeBldgRemainingLoad( 0.0 ),
 			electricityProd( 0.0 ),
@@ -950,6 +968,12 @@ private: //Methods
 	void
 	updateWholeBuildingRecords();
 
+	void
+	reportPVandWindCapacity();
+
+	void
+	sumUpNumberOfStorageDevices();
+
 public: // data
 	bool newEnvironmentInternalGainsFlag;
 	int numElecStorageDevices;
@@ -990,7 +1014,10 @@ private: // data
 	Real64 totalElectricDemand; // Current Total Electric Demand (W)
 	Real64 elecProducedPVRate; // Current Rate of PV Produced from the Arrays (W)
 	Real64 elecProducedWTRate; // Current Rate of Wind Turbine Produced (W)
-	Real64 elecProducedStorageRate; // Current Rate of power to(-)/from(+) storage 
+	Real64 elecProducedStorageRate; // Current Rate of power to(-)/from(+) storage
+
+	Real64 pvTotalCapacity; // for LEED report, total installed PV capacity
+	Real64 windTotalCapacity; // for LEED report, total installed wind capacity
 
 }; // class ElectricPowerServiceManager
 

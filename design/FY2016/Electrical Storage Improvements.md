@@ -62,7 +62,7 @@ A number of known issues related to storage will be addressed as part of a gener
 
 Introductory text will be added at the Group level to help explain how the various ElectricLoadCenter:* and Generator:* objects relate to one another to provide higher level guidance. 
 
-The ElectricLoadCenter:Distribution object will be modified to add the following new input fields at the end of the object.  All of the new inputs will be setup so if they are omitted the legacy behavior, or at least intended behavior where there no issues, will be retained. 
+The ElectricLoadCenter:Distribution object will be modified to add the following new input fields at the end of the object.  All of the new inputs will be setup so if they are omitted the legacy behavior, or at least intended behavior were there no issues, will be retained. 
 
 #### Field: Storage Charge Operation Scheme
 This field is used to determine which power source is used to charge the electric storage device. There are four choices: OnSiteGenerators, OnSiteGeneratorsSurplus, ScheduledGridSupply, and OnSiteGeneratorSurplusPlusScheduledGridSupply. 
