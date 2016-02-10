@@ -173,9 +173,7 @@ public: // data public for unit test
 		//results and reporting
 		Real64 efficiency;
 		Real64 dCPowerIn;
-
 		Real64 dCEnergyIn;
-
 		Real64 thermLossRate;
 		Real64 thermLossEnergy;
 		Real64 qdotConvZone;
@@ -210,6 +208,107 @@ private: // data
 
 
 }; //DCtoACInverter
+
+
+class ACtoDCConverter
+{
+
+private: // creation
+	//Default Constructor
+	ACtoDCConverter() :
+		efficiency( 0.0 ),
+		aCPowerIn( 0.0 ),
+		aCEnergyIn( 0.0 ),
+		dCPowerOut( 0.0 ),
+		dCPowerIn( 0.0 ),
+		dCEnergyIn( 0.0 ),
+
+		thermLossRate( 0.0 ),
+		thermLossEnergy( 0.0 ),
+		qdotConvZone( 0.0 ),
+		qdotRadZone( 0.0 ),
+		ancillACuseRate( 0.0 ),
+		ancillACuseEnergy( 0.0 ),
+		name ( "" ), 
+		availSchedPtr( 0 ),
+		heatLossesDestination( heatLossNotDetermined ),
+		zoneNum( 0 ),
+		zoneRadFract( 0.0 ), // radiative fraction for thermal losses to zone
+		nightTareLossPower( 0.0 ), 
+		maxPower( 0.0 )
+	{}
+
+
+	// Copy Constructor
+	ACtoDCConverter( ACtoDCConverter const & ) = default;
+
+	// Move Constructor
+#if !defined(_MSC_VER) || defined(__INTEL_COMPILER) || (_MSC_VER>=1900)
+	ACtoDCConverter( ACtoDCConverter && ) = default;
+#endif
+
+public: // Methods
+
+	// Destructor
+	~ACtoDCConverter()
+	{}
+
+	// Constructor
+	ACtoDCConverter(
+		std::string objectName
+	);
+
+	void
+	manageConverter( 
+		Real64 const powerDCElectProductionRate,
+		Real64 const powerDCElectStorageDrawRate
+	); // Load Center number counter
+
+	void
+	reinitAtBeginEnvironment();
+
+	void
+	reinitZoneGainsAtBeginEnvironment();
+
+	Real64
+	getThermLossRate();
+
+	Real64
+	getDCPowerOut();
+
+	Real64
+	getDCEnergyOut();
+
+public: // data public for unit test
+	
+		Real64 efficiency;
+		Real64 aCPowerIn;
+		Real64 aCEnergyIn;
+		Real64 dCPowerOut;
+		Real64 dCPowerIn;
+		Real64 dCEnergyIn;
+
+		Real64 thermLossRate;
+		Real64 thermLossEnergy;
+		Real64 qdotConvZone;
+		Real64 qdotRadZone;
+		Real64 ancillACuseRate;
+		Real64 ancillACuseEnergy;
+
+private: // data
+
+
+		std::string name; // user identifier
+		int availSchedPtr; // number for availability schedule.
+		thermalLossDestinationEnum heatLossesDestination;
+		int zoneNum; // destination zone for heat losses from inverter.
+		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
+		Real64 nightTareLossPower; 
+		Real64 maxPower;
+
+};
+
+
 
 class ElectricStorage
 {
