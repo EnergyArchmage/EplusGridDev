@@ -356,6 +356,7 @@ namespace ElectricPowerService {
 		if (this->facilityPowerInTransformerPresent ) {
 			facilityPowerInTransformerObj->setupMeterIndices();
 		}
+
 	}
 
 	void
@@ -496,6 +497,21 @@ namespace ElectricPowerService {
 		this->totalThermalPowerRequest = 0.0;
 		this->electDemand = 0.0;
 
+		this->storageScheme                     = storageSchemeNotSet ; // what options are available for charging storage.
+		this->trackSorageOpMeterName            = ""; // user name for a specific meter
+		this->trackStorageOpMeterIndex          = 1; // points to meter being 
+		this->converterPresent                  = false;
+		this->converterName                     = "";
+		this->maxStorageSOCFraction             = 1.0;
+		this->minStorageSOCFraction             = 0.0;
+		this->designStorageChargePower          = 0.0;
+		this->designStoragetDischargePower      = 0.0;
+		this->storageChargeModSchedIndex        = 0;
+		this->storageDischargeModSchedIndex     = 0;
+		this->facilityDemandTarget              = 0.0;
+		this->facilityDemandTargetModSchedIndex = 0;
+
+
 		std::string const routineName = "ElectPowerLoadCenter constructor ";
 		int numAlphas; // Number of elements in the alpha array
 		int numNums; // Number of elements in the numeric array
@@ -610,7 +626,8 @@ namespace ElectricPowerService {
 			}
 
 
-
+			// Begin new content for grid supply and more control over storage
+			// user selected storage operation scheme
 			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 10 ) ) {
 				if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "TrackFacilityElectricDemandStoreExcessOnSite" ) ) {
 					this->storageScheme = storageSchemeFacilityDemandStoreExcessOnSite;
@@ -647,8 +664,16 @@ namespace ElectricPowerService {
 			this->minStorageSOCFraction        = DataIPShortCuts::rNumericArgs( 3 );
 			this->designStorageChargePower     = DataIPShortCuts::rNumericArgs( 4 );
 			this->designStoragetDischargePower = DataIPShortCuts::rNumericArgs( 5 );
-			this->facilityDemandTarget         = DataIPShortCuts::rNumericArgs( 6 );
 
+			if ( DataIPShortCuts::lNumericFieldBlanks( 6 ) ) {
+				if ( this->storageScheme == storageSchemeFacilityDemandLeveling ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cNumericFieldNames( 6 ) + " = blank field." );
+					errorsFound = true;
+				}
+			} else {
+				this->facilityDemandTarget     = DataIPShortCuts::rNumericArgs( 6 );
+			}
 			this->storageChargeModSchedIndex   = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 13 ) );
 			if ( this->storageChargeModSchedIndex == 0 && this->storageScheme == storageSchemeChargeDischargeSchedules ) {
 				if ( ! DataIPShortCuts::lAlphaFieldBlanks( 13 ) ) {
@@ -1227,8 +1252,16 @@ namespace ElectricPowerService {
 	{
 		this->demandMeterPtr = EnergyPlus::GetMeterIndex( this->demandMeterName );
 		if ( ( this->demandMeterPtr == 0 ) && ( this->genOperationScheme == genOpSchemeTrackMeter ) ) { // throw error
-				ShowFatalError( "Did not find Meter named: " + this->demandMeterName + " in ElectricLoadCenter:Distribution named " + this->name );
+				ShowFatalError( "ElectPowerLoadCenter::setupLoadCenterMeterIndices  Did not find Meter named: " + this->demandMeterName + " in ElectricLoadCenter:Distribution named " + this->name );
+		}
+
+		if ( this->storageScheme = storageSchemeMeterDemandStoreExcessOnSite ) {
+			this->trackStorageOpMeterIndex = EnergyPlus::GetMeterIndex( this->trackSorageOpMeterName );
+			if ( this->trackStorageOpMeterIndex == 0 ) { // 
+				ShowFatalError( "ElectPowerLoadCenter::setupLoadCenterMeterIndices  Did not find Meter named: " + this->trackSorageOpMeterName + " in ElectricLoadCenter:Distribution named " + this->name );
 			}
+
+		}
 	}
 
 	void

@@ -78152,7 +78152,6 @@ ElectricLoadCenter:Distribution,
        \note The target utility demand is entered in the fields called Storage Control Utility Demand Limit and Storage Control Utility Demand Limit Fraction Schedule Name
        \note This scheme first accounts for any on-site generation and during times of high use will discharge storage to reduce facility grid demand to meet the target level
        \note and during times of low use will charge storage from the grid to increase facility grid demand to meet the target level. 
-       and will charge storage 
   A11, \field Storage Control Track Meter Name
        \note required when Storage Operation Scheme is set to TrackMeterDemandStoreExcessOnSite.
        \type external-list
@@ -78195,12 +78194,12 @@ ElectricLoadCenter:Distribution,
        \note Controls timing and magnitude of discharging to grid.
        \note Required field if Storage Operation Scheme is set to TrackChargeDischargeSchedules.
        \note Schedule values should be fractions from 0.0 to 1.0, inclusive.
-  N6,  \field Storage Control Utility Demand Limit
+  N6,  \field Storage Control Utility Demand Target
        \note Target utility service demand power for discharge control.  Storage draws are adjusted upwards for conversion losses. 
        \note Required field for FacilityDemandLimit discharge operation scheme
        \type real
        \units W
-  A15; \field Storage Control Utility Demand Limit Fraction Schedule Name
+  A15; \field Storage Control Utility Demand Target Fraction Schedule Name
        \note Modifies the target utility service demand power over time.
        \note Schedule values should be fractions from 0.0 to 1.0, inclusive.
        \note if omitted a schedule value of 1.0 is used. 
@@ -78209,7 +78208,6 @@ ElectricLoadCenter:Distribution,
        \object-list ScheduleNames
 
 
-  
   ElectricLoadCenter:Storage:Converter,
         \memo This model is for converting AC to DC for grid-supplied charging of DC storage
         \min-fields 4

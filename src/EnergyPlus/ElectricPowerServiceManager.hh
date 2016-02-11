@@ -873,8 +873,10 @@ private: // Creation
 
 		totalPowerRequest( 0.0 ),
 		totalThermalPowerRequest( 0.0 ),
+
 		storageScheme( storageSchemeNotSet ),
-		trackMeterName( "" ),
+		trackSorageOpMeterName( "" ),
+		trackStorageOpMeterIndex( 0 ),
 		converterPresent( false ),
 		converterName( "" ),
 
@@ -1017,7 +1019,8 @@ private: // data
 	Real64 totalThermalPowerRequest; // Total thermal power request from the load center (W)
 
 	storageOpSchemeEnum storageScheme; // what options are available for charging storage.
-	std::string trackMeterName; // user name for a specific meter
+	std::string trackSorageOpMeterName; // user name for a specific meter
+	int trackStorageOpMeterIndex; // points to meter being 
 	bool converterPresent;
 	std::string converterName;
 	std::unique_ptr < ACtoDCConverter > converterObj;
