@@ -220,9 +220,9 @@ private: // creation
 		aCPowerIn( 0.0 ),
 		aCEnergyIn( 0.0 ),
 		dCPowerOut( 0.0 ),
-		dCPowerIn( 0.0 ),
-		dCEnergyIn( 0.0 ),
-
+		dCEnergyOut( 0.0 ),
+		conversionLossPower( 0.0 ),
+		conversionLossEnergy( 0.0 ),
 		thermLossRate( 0.0 ),
 		thermLossEnergy( 0.0 ),
 		qdotConvZone( 0.0 ),
@@ -231,6 +231,7 @@ private: // creation
 		ancillACuseEnergy( 0.0 ),
 		name ( "" ), 
 		availSchedPtr( 0 ),
+		modelType( converterNotYetSet ),
 		heatLossesDestination( heatLossNotDetermined ),
 		zoneNum( 0 ),
 		zoneRadFract( 0.0 ), // radiative fraction for thermal losses to zone
@@ -255,7 +256,7 @@ public: // Methods
 
 	// Constructor
 	ACtoDCConverter(
-		std::string objectName
+		std::string const objectName
 	);
 
 	void
@@ -285,8 +286,9 @@ public: // data public for unit test
 		Real64 aCPowerIn;
 		Real64 aCEnergyIn;
 		Real64 dCPowerOut;
-		Real64 dCPowerIn;
-		Real64 dCEnergyIn;
+		Real64 dCEnergyOut;
+		Real64 conversionLossPower;
+		Real64 conversionLossEnergy;
 
 		Real64 thermLossRate;
 		Real64 thermLossEnergy;
@@ -296,10 +298,16 @@ public: // data public for unit test
 		Real64 ancillACuseEnergy;
 
 private: // data
-
+		enum converterModelTypeEnum {
+			converterNotYetSet,
+			converterCurveFuncOfPower,
+			converterSimpleConstantEff
+		};
 
 		std::string name; // user identifier
 		int availSchedPtr; // number for availability schedule.
+		converterModelTypeEnum modelType; // type of inverter model used
+		int curveNum; // performance curve or table index
 		thermalLossDestinationEnum heatLossesDestination;
 		int zoneNum; // destination zone for heat losses from inverter.
 		Real64 zoneRadFract; // radiative fraction for thermal losses to zone

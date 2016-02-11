@@ -1469,7 +1469,7 @@ namespace ElectricPowerService {
 	}
 
 	DCtoACInverter::DCtoACInverter(
-		std::string objectName
+		std::string const objectName
 	)
 	{
 		//initialize
@@ -1786,6 +1786,164 @@ namespace ElectricPowerService {
 		this->qdotConvZone = this->thermLossRate * ( 1.0 - this->zoneRadFract );
 		this->qdotRadZone = this->thermLossRate * this->zoneRadFract;
 	}
+
+	ACtoDCConverter::ACtoDCConverter(
+		std::string const objectName
+	)
+	{
+		this->availSchedPtr = 0;
+		this->heatLossesDestination = heatLossNotDetermined;
+		this->zoneNum = 0;
+		this->zoneRadFract = 0.0;
+		this->nightTareLossPower = 0.0;
+
+		this->efficiency = 0.0;
+		this->aCPowerIn = 0.0;
+		this->aCEnergyIn = 0.0;
+		this->dCPowerOut = 0.0;
+		this->dCEnergyOut = 0.0;
+		this->conversionLossPower = 0.0;
+		this->conversionLossEnergy = 0.0;
+		this->thermLossRate = 0.0;
+		this->thermLossEnergy = 0.0;
+		this->qdotConvZone = 0.0;
+		this->qdotRadZone = 0.0;
+		this->ancillACuseRate = 0.0;
+		this->ancillACuseEnergy = 0.0;
+		this->name = "";
+		this->availSchedPtr = 0;
+		this->modelType = converterNotYetSet;
+		this->heatLossesDestination= heatLossNotDetermined;
+		this->zoneNum = 0;
+		this->zoneRadFract = 0.0;// radiative fraction for thermal losses to zone
+		this->nightTareLossPower = 0.0;
+		this->maxPower = 0.0;
+
+		std::string const routineName = "ACtoDCConverter constructor ";
+		int NumAlphas; // Number of elements in the alpha array
+		int NumNums; // Number of elements in the numeric array
+		int IOStat; // IO Status when calling get input subroutine
+		bool errorsFound = false;
+		// if/when add object class name to input object this can be simplified. for now search all possible types 
+		bool foundInverter = false;
+		 0;
+		int convertIDFObjectNum = 0;
+
+		int testConvertIndex = InputProcessor::GetObjectItemNum( "ElectricLoadCenter:Storage:Converter",  objectName );
+
+		if ( testConvertIndex > 0 ) {
+			DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Storage:Converter";
+
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, testConvertIndex, DataIPShortCuts::cAlphaArgs, NumAlphas, DataIPShortCuts::rNumericArgs, NumNums, IOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+
+			this->name          = DataIPShortCuts::cAlphaArgs( 1 );
+			// how to verify names are unique across objects? add to GlobalNames?
+
+			if ( DataIPShortCuts::lAlphaFieldBlanks( 2 ) ) {
+				this->availSchedPtr = DataGlobals::ScheduleAlwaysOn;
+			} else {
+				this->availSchedPtr = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 2 ) );
+				if ( this->availSchedPtr == 0 ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 2 ) + " = " + DataIPShortCuts::cAlphaArgs( 2 ) );
+					errorsFound = true;
+				}
+			}
+
+			if ( InputProcessor::SameString(  DataIPShortCuts::cAlphaArgs( 3 ), "SimpleFixed" ) ) {
+				this->modelType = converterSimpleConstantEff;
+
+			} else if ( InputProcessor::SameString(  DataIPShortCuts::cAlphaArgs( 3 ), "FunctionOfPower" ) ) {
+				this->modelType = converterCurveFuncOfPower;
+			} else {
+				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+				ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " = " + DataIPShortCuts::cAlphaArgs( 3 ) );
+				errorsFound = true;
+			}
+			
+			switch ( this->modelType )
+			{
+			case converterSimpleConstantEff : {
+				this->efficiency = DataIPShortCuts::rNumericArgs( 1 );
+				break;
+			}
+
+			case converterCurveFuncOfPower: {
+				this->maxPower = DataIPShortCuts::rNumericArgs( 2 );
+				this->curveNum = CurveManager::GetCurveIndex( DataIPShortCuts::cAlphaArgs( 4 ) );
+				if ( this->curveNum == 0 ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 4 ) + " = " + DataIPShortCuts::cAlphaArgs( 4 ) );
+					ShowContinueError( "Curve was not found" );
+					errorsFound = true;
+				}
+				break;
+			}
+			case converterNotYetSet: {
+				//do nothing
+			}
+			} // end switch
+
+			this->nightTareLossPower = DataIPShortCuts::rNumericArgs( 3 );
+
+			this->zoneNum = InputProcessor::FindItemInList( DataIPShortCuts::cAlphaArgs( 5 ), DataHeatBalance::Zone );
+			if ( this->zoneNum > 0 ) this->heatLossesDestination = zoneGains;
+			if ( this->zoneNum == 0 ) {
+				if ( DataIPShortCuts::lAlphaFieldBlanks( 5 ) ) {
+					this->heatLossesDestination = lostToOutside;
+				} else {
+					this->heatLossesDestination = lostToOutside;
+					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 5 ) + " = " + DataIPShortCuts::cAlphaArgs( 5 ) );
+					ShowContinueError( "Zone name not found. Inverter heat losses will not be added to a zone" );
+					// continue with simulation but inverter losses not sent to a zone.
+				}
+			}
+			this->zoneRadFract = DataIPShortCuts::rNumericArgs( 4 );
+
+			SetupOutputVariable( "Converter AC to DC Efficiency []", this->efficiency, "System", "Average", this->name );
+			SetupOutputVariable( "Converter AC Input Electric Power [W]", this->aCPowerIn, "System", "Average", this->name );
+			SetupOutputVariable( "Converter AC Input Electric Energy [J]", this->aCEnergyIn, "System", "Sum", this->name );
+			SetupOutputVariable( "Converter DC Output Electric Power [W]", this->dCPowerOut, "System", "Average", this->name );
+			SetupOutputVariable( "Converter DC Output Electric Energy [J]", this->dCEnergyOut, "System", "Sum", this->name );
+
+			SetupOutputVariable( "Converter Electric Loss Power [W]", this->conversionLossPower, "System", "Average", this->name );
+			SetupOutputVariable( "Converter Electric Loss Energy [J]", this->conversionLossEnergy, "System", "Sum", this->name, _, "Electricity", "Cogeneration", _, "Plant" );
+
+			SetupOutputVariable( "Converter Thermal Loss Rate [W]", this->thermLossRate, "System", "Average", this->name );
+			SetupOutputVariable( "Converter Thermal Loss Energy [J]", this->thermLossEnergy, "System", "Sum", this->name );
+			SetupOutputVariable( "Converter Ancillary AC Electric Power [W]", this->ancillACuseRate, "System", "Average", this->name );
+			SetupOutputVariable( "Converter Ancillary AC Electric Energy [J]", this->ancillACuseEnergy, "System", "Sum", this->name, _, "Electricity", "Cogeneration", _, "Plant" ); // called cogeneration for end use table
+			if ( this->zoneNum > 0 ) {
+					SetupZoneInternalGain( this->zoneNum, "ElectricLoadCenter:Storage:Converter", this->name, DataHeatBalance::IntGainTypeOf_ElectricLoadCenterConverter, this->qdotConvZone, _, this->qdotRadZone );
+			}
+
+
+		} else {
+			ShowSevereError( routineName + " did not find power convertet name = " + objectName);
+			errorsFound = true;
+		}
+
+		if ( errorsFound ) {
+			ShowFatalError( routineName + "Preceding errors terminate program." );
+		}
+	}
+
+	void ACtoDCConverter::reinitAtBeginEnvironment()
+	{
+		this->ancillACuseRate   = 0.0;
+		this->ancillACuseEnergy = 0.0;
+		this->qdotConvZone      = 0.0;
+		this->qdotRadZone       = 0.0;
+	}
+
+	void ACtoDCConverter::reinitZoneGainsAtBeginEnvironment()
+	{
+		this->qdotConvZone            = 0.0;
+		this->qdotRadZone             = 0.0;
+	}
+
+
 
 	// main constructor
 	ElectricStorage::ElectricStorage(
