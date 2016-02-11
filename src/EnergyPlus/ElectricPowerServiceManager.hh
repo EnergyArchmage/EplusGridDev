@@ -850,7 +850,7 @@ private: // Creation
 		inverterPresent( false ),
 		inverterName( " "),
 		electDemand( 0.0 ),
-		storagePowerSource( chargerSupplyNotYetSet ),
+
 		name( ""),
 		generatorListName( ""),
 		genOperationScheme( genOpSchemeNotYetSet ),
@@ -872,7 +872,20 @@ private: // Creation
 
 
 		totalPowerRequest( 0.0 ),
-		totalThermalPowerRequest( 0.0 )
+		totalThermalPowerRequest( 0.0 ),
+		storageScheme( storageSchemeNotSet ),
+		trackMeterName( "" ),
+		converterPresent( false ),
+		converterName( "" ),
+
+		maxStorageSOCFraction( 1.0 ),
+		minStorageSOCFraction( 0.0 ),
+		designStorageChargePower( 0.0 ),
+		designStoragetDischargePower( 0.0 ),
+		storageChargeModSchedIndex( 0 ),
+		storageDischargeModSchedIndex( 0 ),
+		facilityDemandTarget( 0.0 ),
+		facilityDemandTargetModSchedIndex( 0 )
 
 	{}
 
@@ -965,20 +978,12 @@ private: // data
 		genOpSchemeThermalFollowLimitElectrical
 	};
 
-	enum storageChargeSourceEnum {
-		chargerSupplyNotYetSet,
-		onSiteGenerators,
-		onSiteGeneratorsSurplus,
-		scheduledGridSupply,
-		onSiteGeneratorSurplusPlusScheduledGridSupply
-	};
-
 	enum storageOpSchemeEnum {
 		storageSchemeNotSet,
-		storageSchemeDemandLimit  ,
-		storageScheme  ,
-
-	
+		storageSchemeFacilityDemandStoreExcessOnSite, // legacy control behavior
+		storageSchemeMeterDemandStoreExcessOnSite,
+		storageSchemeChargeDischargeSchedules,
+		storageSchemeFacilityDemandLeveling
 	};
 
 	std::string name; // user identifier
@@ -1011,13 +1016,22 @@ private: // data
 	Real64 totalPowerRequest; // Total electric power request from the load center (W)
 	Real64 totalThermalPowerRequest; // Total thermal power request from the load center (W)
 
-	storageChargeSourceEnum storagePowerSource; // what options are available for charging storage.
-	Real64 maxStorageSOCFraction; // Fraction of storage capacity used as upper limit for controlling charging (don't overcharge the batteries)
-	Real64 minStorageSOCFraction; // Fraction of storage capacity used as lower limit for controlling discharging (dont drain the batteries too far)
-	Real64 maxGridDrawPower; // rate of electric power drawn from grid to go into storage
+	storageOpSchemeEnum storageScheme; // what options are available for charging storage.
+	std::string trackMeterName; // user name for a specific meter
 	bool converterPresent;
 	std::string converterName;
 	std::unique_ptr < ACtoDCConverter > converterObj;
+
+	Real64 maxStorageSOCFraction; // Fraction of storage capacity used as upper limit for controlling charging (don't overcharge the batteries)
+	Real64 minStorageSOCFraction; // Fraction of storage capacity used as lower limit for controlling discharging (dont drain the batteries too far)
+	Real64 designStorageChargePower; // rate of electric power drawn from grid to go into storage
+	Real64 designStoragetDischargePower; // rate of electric power exported to grid by being drawn from storage.  
+	int storageChargeModSchedIndex; // index of fraction schedule for controlling charge rate over time
+	int storageDischargeModSchedIndex; // index of fraction schedule for controlling discharge rate over time.
+	Real64 facilityDemandTarget; // target utility demand level in Watts
+	int facilityDemandTargetModSchedIndex; // index of fracton schedule for controlling target demand over time.
+
+
 
 }; //class ElectPowerLoadCenter
 

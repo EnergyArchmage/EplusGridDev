@@ -609,20 +609,83 @@ namespace ElectricPowerService {
 				this->transformerPresent =  true;
 			}
 
+
+
 			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 10 ) ) {
-				if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "OnSiteGenerators" ) ) {
-					this->storagePowerSource = onSiteGenerators;
-				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "OnSiteGeneratorsSurplus" )  ) {
-					this->storagePowerSource = onSiteGeneratorsSurplus;
-				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "ScheduledGridSupply" )  ) {
-					this->storagePowerSource = scheduledGridSupply;
-				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "OnSiteGeneratorSurplusPlusScheduledGridSupply" )  ) {
-					this->storagePowerSource = onSiteGeneratorSurplusPlusScheduledGridSupply;
+				if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "TrackFacilityElectricDemandStoreExcessOnSite" ) ) {
+					this->storageScheme = storageSchemeFacilityDemandStoreExcessOnSite;
+				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "TrackMeterDemandStoreExcessOnSite" )  ) {
+					this->storageScheme = storageSchemeMeterDemandStoreExcessOnSite;
+				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "TrackChargeDischargeSchedules" )  ) {
+					this->storageScheme = storageSchemeChargeDischargeSchedules;
+				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "FacilityDemandLeveling" )  ) {
+					this->storageScheme = storageSchemeFacilityDemandLeveling;
 				} else {
 					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
 					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 10 ) + " = " + DataIPShortCuts::cAlphaArgs( 10 ) );
 					errorsFound = true;
 				}
+			}
+
+			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 11 ) ) {
+				this->demandMeterName = DataIPShortCuts::cAlphaArgs( 11 );
+
+			} else {
+				if ( this->storageScheme == storageSchemeMeterDemandStoreExcessOnSite ) { // throw error
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 11 ) + ", cannot be blank when storage scheme is TrackMeterDemandStoreExcessOnSite" );
+					errorsFound = true;
+				}
+			}
+
+			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 12 ) ) {
+				this->converterName = DataIPShortCuts::cAlphaArgs( 12 );
+				this->converterPresent = true;
+			}
+
+			this->maxStorageSOCFraction        = DataIPShortCuts::rNumericArgs( 2 );
+			this->minStorageSOCFraction        = DataIPShortCuts::rNumericArgs( 3 );
+			this->designStorageChargePower     = DataIPShortCuts::rNumericArgs( 4 );
+			this->designStoragetDischargePower = DataIPShortCuts::rNumericArgs( 5 );
+			this->facilityDemandTarget         = DataIPShortCuts::rNumericArgs( 6 );
+
+			this->storageChargeModSchedIndex   = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 13 ) );
+			if ( this->storageChargeModSchedIndex == 0 && this->storageScheme == storageSchemeChargeDischargeSchedules ) {
+				if ( ! DataIPShortCuts::lAlphaFieldBlanks( 13 ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 13 ) + " = " + DataIPShortCuts::cAlphaArgs( 13 ) );
+				} else {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 13 ) + " = blank field." );
+				}
+				ShowContinueError( "Schedule not found; Must be entered and valid when Storage Operation Scheme = TrackChargeDischargeSchedules" );
+				errorsFound = true;
+			}
+
+			this->storageDischargeModSchedIndex = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 14 ) );
+			if ( this->storageDischargeModSchedIndex == 0 && this->storageScheme == storageSchemeChargeDischargeSchedules ) {
+				if ( ! DataIPShortCuts::lAlphaFieldBlanks( 14 ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 14 ) + " = " + DataIPShortCuts::cAlphaArgs( 14 ) );
+				} else {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 14 ) + " = blank field." );
+				}
+				ShowContinueError( "Schedule not found; Must be entered and valid when Storage Operation Scheme = TrackChargeDischargeSchedules" );
+				errorsFound = true;
+			}
+
+			this->facilityDemandTargetModSchedIndex = ScheduleManager::GetScheduleIndex( DataIPShortCuts::cAlphaArgs( 15 ) );
+			if ( this->facilityDemandTargetModSchedIndex == 0 && this->storageScheme == storageSchemeFacilityDemandLeveling ) {
+				if ( ! DataIPShortCuts::lAlphaFieldBlanks( 15 ) ) {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 15 ) + " = " + DataIPShortCuts::cAlphaArgs( 15 ) );
+				} else {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 15 ) + " = blank field." );
+				}
+				ShowContinueError( "Schedule not found; Must be entered and valid when Storage Operation Scheme = FacilityDemandLeveling" );
+				errorsFound = true;
 			}
 
 
@@ -664,6 +727,11 @@ namespace ElectricPowerService {
 			//call transformer constructor 
 
 			//this->transformerObj = std::unique_ptr < ElectricTransformer >( new ElectricTransformer (this->transformerName ) );
+		}
+
+		if ( ! errorsFound && this->converterPresent ) {
+			// call AC to DC converter constructor
+			this->converterObj = std::unique_ptr< ACtoDCConverter >( new ACtoDCConverter( this->converterName ) );
 		}
 
 		//Setup general output variables for reporting in the electric load center
