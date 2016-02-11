@@ -78119,22 +78119,11 @@ ElectricLoadCenter:Distribution,
        \key DirectCurrentWithInverterDCStorage
        \key DirectCurrentWithInverterACStorage
        \default AlternatingCurrent
-!  A ,  \field Inverter Object Type
-!       \type choice
-!       \key ElectricLoadCenter:Inverter:Simple
-!       \key ElectricLoadCenter:Inverter:FunctionOfPower
-!       \key ElectricLoadCenter:Inverter:LookUpTable
-  
   A7,  \field Inverter Name
        \note required when Electrical Buss Type=DirectCurrentWithInverter, DirectCurrentWithInverterDCStorage,
        \note or DirectCurrentWithInverterACStorage
        \type object-list
        \object-list InverterList
-!  A ,  \field Electric Storage Object Type
-!       \type choice
-!       \key ElectricLoadCenter:Storage:Simple
-!       \key ElectricLoadCenter:Storage:Battery
-  
   A8,  \field Electrical Storage Object Name
        \note required when Electrical Buss Type=AlternatingCurrentWithStorage, DirectCurrentWithInverterDCStorage,
        \note or DirectCurrentWithInverterACStorage
@@ -78144,8 +78133,25 @@ ElectricLoadCenter:Distribution,
        \note required when power needs to be output from on-site generation or storage to the grid via transformer
        \type object-list
        \object-list TransformerNames
-
-  A10, \field Storage Charge Power Source
+  A10, \field Storage Operation Scheme
+       \note Select method to govern how storage charge and discharge is controlled
+       \type choice
+       \key FacilityDemandLimit
+       \note FacilityDemandLimit indicates that storage control will limit facility power demand drawn from the utility service 
+       \note while accounting for any on-site generation
+       \key TrackFacilityElectricDemand
+       \note TrackFacilityElectricDemand indicates that storage discharge control will follow the facility power demand 
+       \note while accounting for any on-site generation (legacy behavior)
+       \default TrackFacilityElectricDemand
+       \key TrackSchedule
+       \note TrackSchedule indicates that storage discharge control will follow the schedule in the Storage Discharge Track Schedule Name. 
+       \key TrackMeter
+       \note TrackMeter indicates that storage discharge control will follow an electric meter named in the field called Storage Discharge Track Meter Name.  
+       \key ScheduledGridExport
+       \note ScheduledGridExport indicates that storage discharge control will export power to the utility service connection following 
+       \note the power level in the field called Maximum Storage Discharge Grid Export Power multiplied by the value in the schedule 
+       \note named in the field Storage Discharge Grid Export Fraction Schedule Name. 
+  A11, \field Storage Charge Power Source
        \note Select what type of power sources can be used to charge storage.
        \type choice
        \key OnSiteGenerators
@@ -78173,38 +78179,19 @@ ElectricLoadCenter:Distribution,
        \note required field if Storage Charge Operation Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply
        \type real
        \units W
-  A11, \field Storage Charge Grid Supply Power Fraction Schedule Name
-       \note controls timing and magnitude of charging from grid
+  A12, \field Storage Charge Grid Supply Power Fraction Schedule Name
+       \note Controls timing and magnitude of charging from grid
        \note required field if Storage Charge Operation Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply
        \note Schedule values should be fractions from 0.0 to 1.0, inclusive.
        \type object-list
        \object-list ScheduleNames
-  A12, \field Storage Converter Object Name
-       \note name of ElectricLoadCenter:Storage:Converter used to convert AC to DC when charging DC storage from grid supply.
-       \note Required field when both buss type is DirectCurrentWithInverterDCStorage and Storage Charge Operation
-       \note Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply.
+  A13, \field Storage Converter Object Name
+       \note Name of ElectricLoadCenter:Storage:Converter used to convert AC to DC when charging DC storage from grid supply.
+       \note Required field when both buss type is DirectCurrentWithInverterDCStorage and Storage Charge Power Source
+       \note is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply.
        \note A single bidirectional device will reference both an inverter object (DC to AC) and a converter object (AC to DC).
        \type object-list
        \object-list ConverterList
-  
-  A13, \field Storage Operation Scheme
-       \note Select method to govern how storage charge and discharge is controlled
-       \type choice
-       \key DemandLimit
-       \note FacilityDemandLimit indicates that storage discharge control will limit facility power demand drawn from the utility service 
-       \note while accounting for any on-site generation
-       \key TrackFacilityElectricDemand
-       \note TrackFacilityElectricDemand indicates that storage discharge control will follow the facility power demand 
-       \note while accounting for any on-site generation (legacy behavior)
-       \default TrackFacilityElectricDemand
-       \key TrackSchedule
-       \note TrackSchedule indicates that storage discharge control will follow the schedule in the Storage Discharge Track Schedule Name. 
-       \key TrackMeter
-       \note TrackMeter indicates that storage discharge control will follow an electric meter named in the field called Storage Discharge Track Meter Name.  
-       \key ScheduledGridExport
-       \note ScheduledGridExport indicates that storage discharge control will export power to the utility service connection following 
-       \note the power level in the field called Maximum Storage Discharge Grid Export Power multiplied by the value in the schedule 
-       \note named in the field Storage Discharge Grid Export Fraction Schedule Name. 
   N5,  \field Storage Discharge Utility Demand Limit
        \note Target utility service demand power for discharge control.  Storage draws are adjusted upwards for conversion losses. 
        \note Required field for DemandLimit discharge operation scheme

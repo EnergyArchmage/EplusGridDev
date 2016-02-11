@@ -64,8 +64,8 @@ Introductory text will be added at the Group level to help explain how the vario
 
 The ElectricLoadCenter:Distribution object will be modified to add the following new input fields at the end of the object.  All of the new inputs will be setup so if they are omitted the legacy behavior, or at least intended behavior were there no issues, will be retained. 
 
-#### Field: Storage Charge Operation Scheme
-This field is used to determine which power source is used to charge the electric storage device. There are four choices: OnSiteGenerators, OnSiteGeneratorsSurplus, ScheduledGridSupply, and OnSiteGeneratorSurplusPlusScheduledGridSupply. 
+#### Field: Storage Charge Power Source
+This field is used to determine the power source used to charge the electric storage device. There are four choices: OnSiteGenerators, OnSiteGeneratorsSurplus, ScheduledGridSupply, and OnSiteGeneratorSurplusPlusScheduledGridSupply. 
 
 - OnSiteGenerators key choice indicates that all the power produced on-site is used to charge the storage regardless of the current facility power demand. The rate of charging will depend on how the generators are controlled.
 - OnSiteGeneratorsSurplus key choice indicates that the power produced on-site that exceeds the facility demand is used to charge the storage.  The rate of charging will depend on how the generators are controlled and the current level of power consumed by the building and its systems. This was the intended legacy behavior prior to version 8.5 and is therefore the default. 
@@ -87,8 +87,8 @@ This field is the name of a schedule that is used to control the timing and magn
 #### Field: Storage Converter Name
  This field is the name of an ElectricLoadCenter:Storage:Converter object defined elsewhere in the input file that describes the performance of converting convert AC to DC when charging DC storage from grid supply. This field is required when using DC storage (buss type DirectCurrentWithInverterDCStorage) with grid supplied charging power (Storage Charge Operation Scheme is set to ScheduledGridSupply or OnSiteGeneratorSurplusPlusScheduledGridSupply.) Although some inverter devices are bidirectional a separate converter object is needed to describe AC to DC performance. 
 
-#### Field: Storage Discharge Operation Scheme
-This field is used to determine how storage discharge is controlled.  There are five choices:  FacilityDemandLimit, TrackFacilityElectricDemand, TrackSchedule, TrackMeter, and ScheduledGridExport.
+#### Field: Storage Operation Scheme
+This field is used to determine how storage charge and discharge is controlled.  There are five choices:  FacilityDemandLimit, TrackFacilityElectricDemand, TrackSchedule, TrackMeter, and ScheduledGridExport.
 
 - DemandLimit indicates that storage discharge control will limit facility power demand drawn from the utility service while accounting for any on-site generation.  The rate of discharge will depend on the current level of power consumed by the building and its systems, the power generated any on-site generation, and conversion losses as well as demand limit and schedule in the next two fields. This is intended to help control demand (kW) charges in the electric service tariff. 
 - TrackElectric indicates that storage discharge control will follow the facility power demand while accounting for any on-site generation.  This was the intended behavior prior to version 8.5 and is therefore the default. 

@@ -608,6 +608,24 @@ namespace ElectricPowerService {
 		//TODO add handling of Load center to building buss transfers
 				this->transformerPresent =  true;
 			}
+
+			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 10 ) ) {
+				if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "OnSiteGenerators" ) ) {
+					this->storagePowerSource = onSiteGenerators;
+				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "OnSiteGeneratorsSurplus" )  ) {
+					this->storagePowerSource = onSiteGeneratorsSurplus;
+				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "ScheduledGridSupply" )  ) {
+					this->storagePowerSource = scheduledGridSupply;
+				} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 10 ), "OnSiteGeneratorSurplusPlusScheduledGridSupply" )  ) {
+					this->storagePowerSource = onSiteGeneratorSurplusPlusScheduledGridSupply;
+				} else {
+					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
+					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 10 ) + " = " + DataIPShortCuts::cAlphaArgs( 10 ) );
+					errorsFound = true;
+				}
+			}
+
+
 		}
 
 		// now that we are done with processing get input for ElectricLoadCenter:Distribution we can call child input objects without IP shortcut problems
@@ -1943,6 +1961,28 @@ namespace ElectricPowerService {
 		this->qdotRadZone             = 0.0;
 	}
 
+	Real64 ACtoDCConverter::getThermLossRate()
+	{
+		return this->thermLossRate;
+	}
+
+	Real64 ACtoDCConverter::getDCPowerOut()
+	{
+		return this->dCPowerOut;
+	}
+
+	Real64 ACtoDCConverter::getDCEnergyOut()
+	{
+		return this->dCEnergyOut;
+	}
+
+	void ACtoDCConverter::manageConverter(
+	
+	)
+	{
+	
+	
+	}
 
 
 	// main constructor

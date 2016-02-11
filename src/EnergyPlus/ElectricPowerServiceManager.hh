@@ -261,8 +261,7 @@ public: // Methods
 
 	void
 	manageConverter( 
-		Real64 const powerDCElectProductionRate,
-		Real64 const powerDCElectStorageDrawRate
+
 	); // Load Center number counter
 
 	void
@@ -851,6 +850,7 @@ private: // Creation
 		inverterPresent( false ),
 		inverterName( " "),
 		electDemand( 0.0 ),
+		storagePowerSource( chargerSupplyNotYetSet ),
 		name( ""),
 		generatorListName( ""),
 		genOperationScheme( genOpSchemeNotYetSet ),
@@ -935,6 +935,8 @@ public: // data public for unit test
 		dCBussInverterDCStorage,
 		dCBussInverterACStorage
 	};
+
+
 	std::unique_ptr < ElectricStorage > storageObj;  
 //	int storageModelNum; // simulation model parameter type
 	int numGenerators; // Number of Generators
@@ -949,6 +951,8 @@ public: // data public for unit test
 	std::unique_ptr < DCtoACInverter > inverterObj;
 	Real64 electDemand; // Current electric power demand on the load center (W)
 
+
+
 private: // data
 	enum generatorOpSchemeEnum {
 		genOpSchemeNotYetSet,
@@ -961,7 +965,21 @@ private: // data
 		genOpSchemeThermalFollowLimitElectrical
 	};
 
+	enum storageChargeSourceEnum {
+		chargerSupplyNotYetSet,
+		onSiteGenerators,
+		onSiteGeneratorsSurplus,
+		scheduledGridSupply,
+		onSiteGeneratorSurplusPlusScheduledGridSupply
+	};
 
+	enum storageOpSchemeEnum {
+		storageSchemeNotSet,
+		storageSchemeDemandLimit  ,
+		storageScheme  ,
+
+	
+	};
 
 	std::string name; // user identifier
 	std::string generatorListName; // List name of available generators
@@ -993,6 +1011,13 @@ private: // data
 	Real64 totalPowerRequest; // Total electric power request from the load center (W)
 	Real64 totalThermalPowerRequest; // Total thermal power request from the load center (W)
 
+	storageChargeSourceEnum storagePowerSource; // what options are available for charging storage.
+	Real64 maxStorageSOCFraction; // Fraction of storage capacity used as upper limit for controlling charging (don't overcharge the batteries)
+	Real64 minStorageSOCFraction; // Fraction of storage capacity used as lower limit for controlling discharging (dont drain the batteries too far)
+	Real64 maxGridDrawPower; // rate of electric power drawn from grid to go into storage
+	bool converterPresent;
+	std::string converterName;
+	std::unique_ptr < ACtoDCConverter > converterObj;
 
 }; //class ElectPowerLoadCenter
 
