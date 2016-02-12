@@ -331,7 +331,7 @@ private: // Creation
 			maxRainflowArrayInc( 100 ),
 			myWarmUpFlag( false ),
 			name( "" ),
-			storageModelMode( storageTypeNotSet ),
+			storageModelMode( storageModelTypeEnum::storageTypeNotSet ),
 			availSchedPtr( 0 ),
 			heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
 			zoneNum( 0 ),
@@ -486,8 +486,8 @@ public: //data public for unit tests
 
 private: //data
 
-	enum storageModelTypeEnum {
-		storageTypeNotSet,
+	enum class storageModelTypeEnum : int {
+		storageTypeNotSet = 0,
 		simpleBucketStorage,
 		kiBaMBattery
 	};
@@ -579,7 +579,7 @@ private: // Creation
 			name( " "),
 			myOneTimeFlag( true ),
 			availSchedPtr( 0 ),
-			usageMode( useNotYetSet ),
+			usageMode( transformerUseEnum::useNotYetSet ),
 			heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFrac( 0.0 ),
@@ -588,7 +588,7 @@ private: // Creation
 			factorTempCoeff( 0.0 ),
 			tempRise( 0.0 ),
 			eddyFrac( 0.0 ),
-			performanceInputMode( perfInputMethodNotSet ),
+			performanceInputMode( transformerPerformanceInputEnum::perfInputMethodNotSet ),
 			ratedEfficiency( 0.0 ),
 			ratedPUL( 0.0 ),
 			ratedTemp( 0.0 ),
@@ -666,14 +666,14 @@ public:
 	std::vector < int > loadCenterObjIndexes; // index array of load centers served by the transformer
 private: //data
 
-	enum transformerUseEnum {
-		useNotYetSet,
+	enum class transformerUseEnum : int {
+		useNotYetSet = 0,
 		powerInFromGrid, // condition power from grid going into building buss
 		powerOutFromBldgToGrid, // condition power from building buss going out to grid
 		powerFromLoadCenterToBldg // condition power from a load center going into building buss
 	};
-	enum transformerPerformanceInputEnum {
-		perfInputMethodNotSet,
+	enum class transformerPerformanceInputEnum : int {
+		perfInputMethodNotSet = 0,
 		lossesMethod,
 		efficiencyMethod
 	
@@ -739,7 +739,7 @@ private: // Creation
 		typeOfName( "" ),
 		compGenTypeOf_Num( 0 ),
 		compPlantTypeOf_Num( 0 ),
-		generatorType( generatorNotYetSet ),
+		generatorType( generatorTypeEnum::NotYetSet ),
 		generatorIndex( 0 ),
 		maxPowerOut( 0.0 ),
 		availSched( " " ),
@@ -798,15 +798,15 @@ private: //Methods
 
 
 public: // data // might make this class a friend of ElectPowerLoadCenter?
-	enum generatorTypeEnum {
-		generatorNotYetSet,
-		generatorICEngine,
-		generatorCombTurbine,
-		generatorPV,
-		generatorFuelCell,
-		generatorMicroCHP,
-		generatorMicroturbine,
-		generatorWindTurbine
+	enum class generatorTypeEnum : int {
+		NotYetSet = 0,
+		ICEngine,
+		CombTurbine,
+		PV,
+		FuelCell,
+		MicroCHP,
+		Microturbine,
+		WindTurbine
 	};
 
 

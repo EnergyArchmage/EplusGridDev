@@ -1504,7 +1504,7 @@ namespace ElectricPowerService {
 		this->typeOfName= "";
 		this->compGenTypeOf_Num = 0;
 		this->compPlantTypeOf_Num = 0;
-		this->generatorType = generatorNotYetSet;
+		this->generatorType = generatorTypeEnum::NotYetSet;
 		this->generatorIndex = 0;
 		this->maxPowerOut = 0.0;
 		this->availSchedPtr = 0;
@@ -1528,31 +1528,31 @@ namespace ElectricPowerService {
 		this->name                   = objectName;
 		this->typeOfName             = objectType;
 		if ( InputProcessor::SameString( objectType, "Generator:InternalCombustionEngine" ) ) {
-			this->generatorType = generatorICEngine;
+			this->generatorType = generatorTypeEnum::ICEngine;
 			this->compGenTypeOf_Num   = DataGlobalConstants::iGeneratorICEngine;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_ICEngine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:CombustionTurbine" ) ) {
-			this->generatorType = generatorCombTurbine;
+			this->generatorType = generatorTypeEnum::CombTurbine;
 			this->compGenTypeOf_Num = DataGlobalConstants::iGeneratorCombTurbine;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_CTurbine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:MicroTurbine" ) ) {
-			this->generatorType = generatorMicroturbine;
+			this->generatorType = generatorTypeEnum::Microturbine;
 			this->compGenTypeOf_Num = DataGlobalConstants::iGeneratorMicroturbine;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroTurbine;
 		} else if ( InputProcessor::SameString( objectType, "Generator:Photovoltaic" ) ) {
-			this->generatorType = generatorPV;
+			this->generatorType = generatorTypeEnum::PV;
 			this->compGenTypeOf_Num = DataGlobalConstants::iGeneratorPV;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_PVTSolarCollectorFlatPlate;
 		} else if ( InputProcessor::SameString( objectType, "Generator:FuelCell" ) ) {
-			this->generatorType = generatorFuelCell;
+			this->generatorType = generatorTypeEnum::FuelCell;
 			this->compGenTypeOf_Num = DataGlobalConstants::iGeneratorFuelCell;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_FCStackCooler;
 		} else if ( InputProcessor::SameString( objectType, "Generator:MicroCHP" ) ) {
-			this->generatorType = generatorMicroCHP;
+			this->generatorType = generatorTypeEnum::MicroCHP;
 			this->compGenTypeOf_Num = DataGlobalConstants::iGeneratorMicroCHP;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Generator_MicroCHP;
 		} else if ( InputProcessor::SameString( objectType, "Generator:WindTurbine" ) ) {
-			this->generatorType = generatorWindTurbine;
+			this->generatorType = generatorTypeEnum::WindTurbine;
 			this->compGenTypeOf_Num = DataGlobalConstants::iGeneratorWindTurbine;
 			this->compPlantTypeOf_Num = DataPlant::TypeOf_Other;
 		} else {
@@ -1609,56 +1609,56 @@ namespace ElectricPowerService {
 		// Select and call models and also collect results for load center power conditioning and reporting
 		switch ( this->generatorType )
 		{
-		case generatorICEngine: {
+		case generatorTypeEnum::ICEngine: {
 			ICEngineElectricGenerator::SimICEngineGenerator( DataGlobalConstants::iGeneratorICEngine, this->name, this->generatorIndex, runFlag, myElecLoadRequest, FirstHVACIteration );
 			ICEngineElectricGenerator::GetICEGeneratorResults( DataGlobalConstants::iGeneratorICEngine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
 			thermalPowerOutput = this->thermalProdRate;
 			break;
 		}
-		case generatorCombTurbine: {
+		case generatorTypeEnum::CombTurbine: {
 			CTElectricGenerator::SimCTGenerator( DataGlobalConstants::iGeneratorCombTurbine, this->name, this->generatorIndex, runFlag, myElecLoadRequest, FirstHVACIteration );
 			CTElectricGenerator::GetCTGeneratorResults( DataGlobalConstants::iGeneratorCombTurbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
 			thermalPowerOutput = this->thermalProdRate;
 			break;
 		}
-		case generatorPV: {
+		case generatorTypeEnum::PV: {
 			Photovoltaics::SimPVGenerator( DataGlobalConstants::iGeneratorPV, this->name, this->generatorIndex, runFlag, myElecLoadRequest );
 			Photovoltaics::GetPVGeneratorResults( DataGlobalConstants::iGeneratorPV, this->generatorIndex, this->dCElectProdRate, this->dCElectricityProd, this->thermalProdRate, this->thermalProd );
 			electricPowerOutput = this->dCElectProdRate;
 			thermalPowerOutput = this->thermalProdRate;
 			break;
 		}
-		case generatorFuelCell: {
+		case generatorTypeEnum::FuelCell: {
 			FuelCellElectricGenerator::SimFuelCellGenerator( DataGlobalConstants::iGeneratorFuelCell, this->name, this->generatorIndex, runFlag, myElecLoadRequest, FirstHVACIteration );
 			FuelCellElectricGenerator::GetFuelCellGeneratorResults( DataGlobalConstants::iGeneratorFuelCell, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
 			thermalPowerOutput = this->thermalProdRate;
 			break;
 		}
-		case generatorMicroCHP: {
+		case generatorTypeEnum::MicroCHP: {
 			MicroCHPElectricGenerator::SimMicroCHPGenerator( DataGlobalConstants::iGeneratorMicroCHP, this->name, this->generatorIndex, runFlag, false, myElecLoadRequest, DataPrecisionGlobals::constant_zero, FirstHVACIteration );
 			MicroCHPElectricGenerator::GetMicroCHPGeneratorResults( DataGlobalConstants::iGeneratorMicroCHP, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
 			thermalPowerOutput = this->thermalProdRate;
 			break;
 		}
-		case generatorMicroturbine: {
+		case generatorTypeEnum::Microturbine: {
 			MicroturbineElectricGenerator::SimMTGenerator( DataGlobalConstants::iGeneratorMicroturbine, this->name, this->generatorIndex, runFlag, myElecLoadRequest, FirstHVACIteration );
 			MicroturbineElectricGenerator::GetMTGeneratorResults( DataGlobalConstants::iGeneratorMicroturbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
 			thermalPowerOutput = this->thermalProdRate;
 			break;
 		}
-		case generatorWindTurbine: {
+		case generatorTypeEnum::WindTurbine: {
 			WindTurbine::SimWindTurbine( DataGlobalConstants::iGeneratorWindTurbine, this->name, this->generatorIndex, runFlag, myElecLoadRequest );
 			WindTurbine::GetWTGeneratorResults( DataGlobalConstants::iGeneratorWindTurbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
 			thermalPowerOutput = this->thermalProdRate;
 			break;
 		}
-		case generatorNotYetSet: {
+		case generatorTypeEnum::NotYetSet: {
 			// do nothing
 			break;
 		}
@@ -2172,7 +2172,7 @@ namespace ElectricPowerService {
 		//initialize
 		this->maxRainflowArrayBounds = 100;
 		this->myWarmUpFlag =  false;
-		this->storageModelMode = storageTypeNotSet;
+		this->storageModelMode = storageModelTypeEnum::storageTypeNotSet;
 		this->availSchedPtr = 0;
 		this->heatLossesDestination = thermalLossDestinationEnum::heatLossNotDetermined;
 		this->zoneNum = 0;
@@ -2250,7 +2250,7 @@ namespace ElectricPowerService {
 			foundStorage = true;
 			storageIDFObjectNum = testStorageIndex;
 			DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Storage:Simple";
-			this->storageModelMode = simpleBucketStorage;
+			this->storageModelMode = storageModelTypeEnum::simpleBucketStorage;
 		}
 
 		testStorageIndex = InputProcessor::GetObjectItemNum("ElectricLoadCenter:Storage:Battery", objectName );
@@ -2258,7 +2258,7 @@ namespace ElectricPowerService {
 			foundStorage = true;
 			storageIDFObjectNum = testStorageIndex;
 			DataIPShortCuts::cCurrentModuleObject = "ElectricLoadCenter:Storage:Battery";
-			this->storageModelMode = kiBaMBattery;
+			this->storageModelMode = storageModelTypeEnum::kiBaMBattery;
 		}
 
 		if ( foundStorage ) {
@@ -2296,7 +2296,7 @@ namespace ElectricPowerService {
 			switch ( this->storageModelMode )
 			{
 			
-			case simpleBucketStorage: {
+			case storageModelTypeEnum::simpleBucketStorage: {
 				this->energeticEfficCharge    = DataIPShortCuts::rNumericArgs( 2 );
 				this->energeticEfficDischarge = DataIPShortCuts::rNumericArgs( 3 );
 				this->maxEnergyCapacity       = DataIPShortCuts::rNumericArgs( 4 );
@@ -2307,7 +2307,7 @@ namespace ElectricPowerService {
 				break;
 			}
 			
-			case kiBaMBattery: {
+			case storageModelTypeEnum::kiBaMBattery: {
 				this->chargeCurveNum = CurveManager::GetCurveIndex( DataIPShortCuts::cAlphaArgs( 4 ) ); //voltage calculation for charging
 				if ( this->chargeCurveNum == 0 && ! DataIPShortCuts::lAlphaFieldBlanks( 4 ) ) {
 					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
@@ -2403,7 +2403,7 @@ namespace ElectricPowerService {
 				}
 				break;
 			}
-			case storageTypeNotSet: {
+			case storageModelTypeEnum::storageTypeNotSet: {
 				// do nothing
 				break;
 			}
@@ -2418,9 +2418,9 @@ namespace ElectricPowerService {
 			SetupOutputVariable( "Electric Storage Thermal Loss Rate [W]", this->thermLossRate, "System", "Average", this->name  );
 			SetupOutputVariable( "Electric Storage Thermal Loss Energy [J]", this->thermLossEnergy, "System", "Sum", this->name  );
 			if ( DataGlobals::AnyEnergyManagementSystemInModel ) {
-				if ( this->storageModelMode == simpleBucketStorage ) {
+				if ( this->storageModelMode == storageModelTypeEnum::simpleBucketStorage ) {
 					SetupEMSInternalVariable( "Electrical Storage Maximum Capacity", this->name , "[J]", this->maxEnergyCapacity );
-				} else if ( this->storageModelMode == kiBaMBattery ) {
+				} else if ( this->storageModelMode == storageModelTypeEnum::kiBaMBattery ) {
 					SetupEMSInternalVariable( "Electrical Storage Maximum Capacity", this->name , "[Ah]", this->maxAhCapacity );
 				}
 				SetupEMSActuator( "Electrical Storage", this->name , "Power Draw Rate", "[W]", this->eMSOverridePelFromStorage, this->eMSValuePelFromStorage );
@@ -2430,15 +2430,15 @@ namespace ElectricPowerService {
 			if ( this->zoneNum > 0 ) {
 				switch ( this->storageModelMode )
 				{
-				case simpleBucketStorage: {
+				case storageModelTypeEnum::simpleBucketStorage: {
 					SetupZoneInternalGain( this->zoneNum, "ElectricLoadCenter:Storage:Simple", this->name , DataHeatBalance::IntGainTypeOf_ElectricLoadCenterStorageSimple, this->qdotConvZone, _, this->qdotRadZone );
 					break;
 				}
-				case kiBaMBattery: {
+				case storageModelTypeEnum::kiBaMBattery: {
 					SetupZoneInternalGain( this->zoneNum, "ElectricLoadCenter:Storage:Battery", this->name , DataHeatBalance::IntGainTypeOf_ElectricLoadCenterStorageBattery, this->qdotConvZone, _, this->qdotRadZone );
 					break;
 				}
-				case storageTypeNotSet: {
+				case storageModelTypeEnum::storageTypeNotSet: {
 					// do nothing
 					break;
 				}
@@ -2474,7 +2474,7 @@ namespace ElectricPowerService {
 		this->lastTimeStepStateOfCharge = this->startingEnergyStored;
 		this->thisTimeStepStateOfCharge = this->startingEnergyStored;
 
-		if ( this->storageModelMode == kiBaMBattery ) {
+		if ( this->storageModelMode == storageModelTypeEnum::kiBaMBattery ) {
 			Real64 initialCharge = this->maxAhCapacity * this->startingSOC;
 			this->lastTwoTimeStepAvailable = initialCharge * this->availableFrac;
 			this->lastTwoTimeStepBound = initialCharge * ( 1.0 - this->availableFrac );
@@ -2522,7 +2522,7 @@ namespace ElectricPowerService {
 
 		Real64 timeElapsed = DataGlobals::HourOfDay + DataGlobals::TimeStep * DataGlobals::TimeStepZone + DataHVACGlobals::SysTimeElapsed;
 		if ( this->timeElapsed != timeElapsed ) { //time changed, update last with "current" result from previous time
-			if ( this->storageModelMode == kiBaMBattery && this->lifeCalculation == batteryLifeCalculationYes ) {
+			if ( this->storageModelMode == storageModelTypeEnum::kiBaMBattery && this->lifeCalculation == batteryLifeCalculationYes ) {
 				//    At this point, the current values, last time step values and last two time step values have not been updated, hence:
 				//    "ThisTimeStep*" actually points to the previous one time step
 				//    "LastTimeStep*" actually points to the previous two time steps
@@ -2595,7 +2595,7 @@ namespace ElectricPowerService {
 		Real64 q0 = 0.0;
 		Real64 E0d = 0.0;
 
-		if ( this->storageModelMode == kiBaMBattery ) {
+		if ( this->storageModelMode == storageModelTypeEnum::kiBaMBattery ) {
 			qmax = this->maxAhCapacity;
 			E0c = this->chargedOCV;
 			E0d = this->dischargedOCV;
@@ -2666,7 +2666,7 @@ namespace ElectricPowerService {
 
 		if ( charging ) {
 
-			if ( this->storageModelMode == simpleBucketStorage ) {
+			if ( this->storageModelMode == storageModelTypeEnum::simpleBucketStorage ) {
 
 				if ( this->lastTimeStepStateOfCharge >= this->maxEnergyCapacity ) {
 					// storage full!  no more allowed!
@@ -2693,7 +2693,7 @@ namespace ElectricPowerService {
 
 			}
 
-			if ( this->storageModelMode == kiBaMBattery ) {
+			if ( this->storageModelMode == storageModelTypeEnum::kiBaMBattery ) {
 
 
 				//*************************************************
@@ -2750,7 +2750,7 @@ namespace ElectricPowerService {
 		} //charging
 
 		if ( drawing ) {
-			if ( this->storageModelMode == simpleBucketStorage ) {
+			if ( this->storageModelMode == storageModelTypeEnum::simpleBucketStorage ) {
 
 				if ( this->lastTimeStepStateOfCharge <= 0.0 ) {
 					// storage empty  no more allowed!
@@ -2775,7 +2775,7 @@ namespace ElectricPowerService {
 				Pstorage = -tmpPdraw;
 			} // simple discharging
 
-			if ( this->storageModelMode == kiBaMBattery ) {
+			if ( this->storageModelMode == storageModelTypeEnum::kiBaMBattery ) {
 
 				//**********************************************
 				//The sign of power and current is positive in discharging
@@ -2826,7 +2826,7 @@ namespace ElectricPowerService {
 			}
 		}
 
-		if ( this->storageModelMode == simpleBucketStorage ) {
+		if ( this->storageModelMode == storageModelTypeEnum::simpleBucketStorage ) {
 			if ( ( ! charging ) && ( ! drawing ) ) {
 
 				this->thisTimeStepStateOfCharge = this->lastTimeStepStateOfCharge;
@@ -2866,7 +2866,7 @@ namespace ElectricPowerService {
 			StorageDrawnPower = this->drawnPower;
 		} // Outputs for simple battery model
 
-		if ( this->storageModelMode == kiBaMBattery ) {
+		if ( this->storageModelMode == storageModelTypeEnum::kiBaMBattery ) {
 
 			if ( ( ! charging ) && ( ! drawing ) ) {
 				this->thisTimeStepAvailable = this->lastTimeStepAvailable;
@@ -3182,7 +3182,7 @@ namespace ElectricPowerService {
 	{
 		this->myOneTimeFlag = true;
 		this->availSchedPtr = 0;
-		this->usageMode = useNotYetSet;
+		this->usageMode = transformerUseEnum::useNotYetSet;
 		this->heatLossesDestination = thermalLossDestinationEnum::heatLossNotDetermined;
 		this->zoneNum = 0;
 		this->zoneRadFrac = 0.0;
@@ -3191,7 +3191,7 @@ namespace ElectricPowerService {
 		this->factorTempCoeff = 0.0;
 		this->tempRise = 0.0;
 		this->eddyFrac = 0.0;
-		this->performanceInputMode = perfInputMethodNotSet;
+		this->performanceInputMode = transformerPerformanceInputEnum::perfInputMethodNotSet;
 		this->ratedEfficiency = 0.0;
 		this->ratedPUL = 0.0;
 		this->ratedTemp = 0.0;
@@ -3242,13 +3242,13 @@ namespace ElectricPowerService {
 			}
 
 			if ( DataIPShortCuts::lAlphaFieldBlanks( 3 ) ) {
-				this->usageMode = powerInFromGrid; //default
+				this->usageMode = transformerUseEnum::powerInFromGrid; //default
 			} else if ( InputProcessor::SameString(DataIPShortCuts::cAlphaArgs( 3 ), "PowerInFromGrid" ) ) {
-				this->usageMode = powerInFromGrid;
+				this->usageMode = transformerUseEnum::powerInFromGrid;
 			} else if ( InputProcessor::SameString(DataIPShortCuts::cAlphaArgs( 3 ), "PowerOutFromOnsiteGeneration" ) ) {
-				this->usageMode = powerOutFromBldgToGrid;
+				this->usageMode = transformerUseEnum::powerOutFromBldgToGrid;
 			} else if ( InputProcessor::SameString(DataIPShortCuts::cAlphaArgs( 3 ), "LoadCenterProductionConditioning" ) ) {
-				this->usageMode = powerFromLoadCenterToBldg;
+				this->usageMode = transformerUseEnum::powerFromLoadCenterToBldg;
 
 			} else {
 					ShowWarningError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
@@ -3286,9 +3286,9 @@ namespace ElectricPowerService {
 			this->eddyFrac = DataIPShortCuts::rNumericArgs( 5 );
 
 			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "RatedLosses" ) ) {
-				this->performanceInputMode = lossesMethod;
+				this->performanceInputMode = transformerPerformanceInputEnum::lossesMethod;
 			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 6 ), "NominalEfficiency" ) ) {
-				this->performanceInputMode = efficiencyMethod;
+				this->performanceInputMode = transformerPerformanceInputEnum::efficiencyMethod;
 			} else {
 				ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" +  DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
 				ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 6 ) + " = " + DataIPShortCuts::cAlphaArgs( 6 ) );
@@ -3302,7 +3302,7 @@ namespace ElectricPowerService {
 			this->ratedTemp       = DataIPShortCuts::rNumericArgs( 10 );
 			this->maxPUL          = DataIPShortCuts::rNumericArgs( 11 );
 			//Check the input for MaxPUL if the performance input method is EfficiencyMethod
-			if ( this->performanceInputMode == efficiencyMethod ) {
+			if ( this->performanceInputMode == transformerPerformanceInputEnum::efficiencyMethod ) {
 				if ( DataIPShortCuts::lNumericFieldBlanks( 11 ) ) {
 					this->maxPUL = this->ratedPUL;
 				} else if ( this->maxPUL <= 0 || this->maxPUL > 1 ) {
@@ -3317,7 +3317,7 @@ namespace ElectricPowerService {
 			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 7 ), "No" ) ) {
 				this->considerLosses = false;
 			} else {
-				if ( this->usageMode == powerInFromGrid ) {
+				if ( this->usageMode == transformerUseEnum::powerInFromGrid ) {
 					ShowSevereError( routineName + DataIPShortCuts::cCurrentModuleObject + "=\"" + DataIPShortCuts::cAlphaArgs( 1 ) + "\", invalid entry." );
 					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 7 ) + " = " + DataIPShortCuts::cAlphaArgs( 7 ) );
 					errorsFound = true;
@@ -3327,7 +3327,7 @@ namespace ElectricPowerService {
 			int numAlphaBeforeMeter = 7;
 			int numWiredMeters = numAlphas - numAlphaBeforeMeter;
 
-			if ( this->usageMode == powerInFromGrid ) {
+			if ( this->usageMode == transformerUseEnum::powerInFromGrid ) {
 
 				//Provide warning if no meter is wired to a transformer used to get power from the grid
 				if ( numWiredMeters <= 0 ) {
@@ -3404,7 +3404,7 @@ namespace ElectricPowerService {
 			// calculate rated no load losses and rated load losses if the performance input method is based on
 			// nominal efficiency. This calculation is done only once
 
-			if ( this->performanceInputMode == efficiencyMethod ) {
+			if ( this->performanceInputMode == transformerPerformanceInputEnum::efficiencyMethod ) {
 
 				Real64 resRef = this->factorTempCoeff + this->tempRise + ambTempRef;
 				Real64 resSpecified = this->factorTempCoeff + this->ratedTemp;
@@ -3423,7 +3423,7 @@ namespace ElectricPowerService {
 		Real64 pastElecLoad = 0.0; // transformer load at the previous timestep
 		switch ( this->usageMode )
 		{
-		case powerInFromGrid: {
+		case transformerUseEnum::powerInFromGrid: {
 			for ( std::size_t meterNum = 0; meterNum < this->wiredMeterPtrs.size(); ++meterNum ) {
 
 				if ( DataGlobals::MetersHaveBeenInitialized ) {
@@ -3450,16 +3450,16 @@ namespace ElectricPowerService {
 			this->powerOut = elecLoad; //the metered value is transformer's output in PowerInFromGrid mode
 			break;
 		}
-		case powerOutFromBldgToGrid : {
+		case transformerUseEnum::powerOutFromBldgToGrid : {
 			this->powerIn = surplusPowerOutFromLoadCenters;
 			elecLoad = surplusPowerOutFromLoadCenters; // TODO this is input but should be output with the losses, but we don't have them yet. 
 			break;
 		}
-		case powerFromLoadCenterToBldg : {
+		case transformerUseEnum::powerFromLoadCenterToBldg : {
 			//TODO, new configuration for transformer, really part of the specific load center and connects it to the main building bus
 			break;
 		}
-		case useNotYetSet : {
+		case transformerUseEnum::useNotYetSet : {
 			// do nothing
 			break;
 		}
@@ -3512,7 +3512,7 @@ namespace ElectricPowerService {
 
 		switch ( this->usageMode )
 		{
-		case powerInFromGrid: {
+		case transformerUseEnum::powerInFromGrid: {
 			this->powerIn = elecLoad + totalLossRate;
 
 			//Transformer losses are wired to the meter via the variable "%ElecUseUtility" only if transformer losses
@@ -3531,7 +3531,7 @@ namespace ElectricPowerService {
 			break;
 		}
 
-		case powerOutFromBldgToGrid: {
+		case transformerUseEnum::powerOutFromBldgToGrid: {
 			this->powerOut = elecLoad - totalLossRate;
 
 			if ( this->powerOut < 0 ) this->powerOut = 0.0;
@@ -3543,11 +3543,11 @@ namespace ElectricPowerService {
 			this->elecUseUtility = 0.0;
 			break;
 		}
-		case powerFromLoadCenterToBldg : {
+		case transformerUseEnum::powerFromLoadCenterToBldg : {
 			//TODO, new configuration for transformer, really part of the specific load center and connects it to the main building bus
 			break;
 		}
-		case useNotYetSet : {
+		case transformerUseEnum::useNotYetSet : {
 			// do nothing
 			break;
 		}
@@ -3579,7 +3579,7 @@ namespace ElectricPowerService {
 	void
 	ElectricTransformer::setupMeterIndices()
 	{
-		if (this->usageMode == powerInFromGrid ) {
+		if (this->usageMode == transformerUseEnum::powerInFromGrid ) {
 			for ( std::size_t meterNum = 0; meterNum < this->wiredMeterNames.size(); ++meterNum ) {
 
 				this->wiredMeterPtrs[ meterNum ] = GetMeterIndex( this->wiredMeterNames[ meterNum ] );
