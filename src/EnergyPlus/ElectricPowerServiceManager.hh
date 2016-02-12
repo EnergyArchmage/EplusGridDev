@@ -78,8 +78,8 @@ namespace EnergyPlus {
 
 namespace ElectricPowerService {
 
-	enum thermalLossDestinationEnum {
-		heatLossNotDetermined,
+	enum class thermalLossDestinationEnum : int {
+		heatLossNotDetermined = 0,
 		zoneGains,
 		lostToOutside
 	};
@@ -106,9 +106,9 @@ private: // Creation
 			ancillACuseRate( 0.0 ),
 			ancillACuseEnergy( 0.0 ),
 			name( ""),
-			modelType( notYetSet ),
+			modelType( inverterModelTypeEnum::notYetSet ),
 			availSchedPtr( 0 ),
-			heatLossesDestination( heatLossNotDetermined ),
+			heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
 			nightTareLossPower( 0.0 ),
@@ -182,7 +182,7 @@ public: // data public for unit test
 		Real64 ancillACuseEnergy;
 
 private: // data
-		enum inverterModelTypeEnum {
+		enum class inverterModelTypeEnum : int {
 			notYetSet,
 			cECLookUpTableModel,
 			curveFuncOfPower,
@@ -231,8 +231,8 @@ private: // creation
 		ancillACuseEnergy( 0.0 ),
 		name ( "" ), 
 		availSchedPtr( 0 ),
-		modelType( converterNotYetSet ),
-		heatLossesDestination( heatLossNotDetermined ),
+		modelType( converterModelTypeEnum::NotYetSet ),
+		heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
 		zoneNum( 0 ),
 		zoneRadFract( 0.0 ), // radiative fraction for thermal losses to zone
 		nightTareLossPower( 0.0 ), 
@@ -297,10 +297,10 @@ public: // data public for unit test
 		Real64 ancillACuseEnergy;
 
 private: // data
-		enum converterModelTypeEnum {
-			converterNotYetSet,
-			converterCurveFuncOfPower,
-			converterSimpleConstantEff
+		enum class converterModelTypeEnum : int {
+			NotYetSet,
+			CurveFuncOfPower,
+			SimpleConstantEff
 		};
 
 		std::string name; // user identifier
@@ -333,7 +333,7 @@ private: // Creation
 			name( "" ),
 			storageModelMode( storageTypeNotSet ),
 			availSchedPtr( 0 ),
-			heatLossesDestination( heatLossNotDetermined ),
+			heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
 			startingEnergyStored( 0.0 ),
@@ -580,7 +580,7 @@ private: // Creation
 			myOneTimeFlag( true ),
 			availSchedPtr( 0 ),
 			usageMode( useNotYetSet ),
-			heatLossesDestination( heatLossNotDetermined ),
+			heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFrac( 0.0 ),
 			ratedCapacity( 0.0 ),
@@ -842,7 +842,7 @@ private: // Creation
 	// Default Constructor
 	ElectPowerLoadCenter() :
 		numGenerators( 0 ),
-		bussType( bussNotYetSet ),
+		bussType( electricBussTypeEnum::bussNotYetSet ),
 		electricityProd( 0.0 ),
 		electProdRate( 0.0 ),
 		thermalProd( 0.0 ),
@@ -853,7 +853,7 @@ private: // Creation
 
 		name( ""),
 		generatorListName( ""),
-		genOperationScheme( genOpSchemeNotYetSet ),
+		genOperationScheme( generatorOpSchemeEnum::NotYetSet ),
 		demandMeterPtr( 0 ),
 		generatorsPresent( false ),
 
@@ -874,7 +874,7 @@ private: // Creation
 		totalPowerRequest( 0.0 ),
 		totalThermalPowerRequest( 0.0 ),
 
-		storageScheme( storageSchemeNotSet ),
+		storageScheme( storageOpSchemeEnum::NotSet ),
 		trackSorageOpMeterName( "" ),
 		trackStorageOpMeterIndex( 0 ),
 		converterPresent( false ),
@@ -917,6 +917,8 @@ public: // Methods
 		Real64 & remainingPowerDemand
 	);
 
+
+
 	void
 	setupLoadCenterMeterIndices();
 
@@ -934,7 +936,16 @@ public: // Methods
 
 private: //Methods
 
+	void
+	dispatchGenerators(
+		bool const firstHVACIteration,
+		Real64 & remainingPowerDemand
+	);
 
+	void
+	dispatchStorage(
+		Real64 & remainingPowerDemand
+	);
 
 	void
 	calcLoadCenterThermalLoad(
@@ -942,7 +953,7 @@ private: //Methods
 	);
 
 public: // data public for unit test
-	enum electricBussTypeEnum {
+	enum class electricBussTypeEnum : int {
 		bussNotYetSet,
 		aCBuss,
 		dCBussInverter,
@@ -969,23 +980,23 @@ public: // data public for unit test
 
 
 private: // data
-	enum generatorOpSchemeEnum {
-		genOpSchemeNotYetSet,
-		genOpSchemeBaseLoad,
-		genOpSchemeDemandLimit,
-		genOpSchemeTrackElectrical,
-		genOpSchemeTrackSchedule,
-		genOpSchemeTrackMeter,
-		genOpSchemeThermalFollow,
-		genOpSchemeThermalFollowLimitElectrical
+	enum class generatorOpSchemeEnum : int {
+		NotYetSet = 0,
+		BaseLoad,
+		DemandLimit,
+		TrackElectrical,
+		TrackSchedule,
+		TrackMeter,
+		ThermalFollow,
+		ThermalFollowLimitElectrical
 	};
 
-	enum storageOpSchemeEnum {
-		storageSchemeNotSet,
-		storageSchemeFacilityDemandStoreExcessOnSite, // legacy control behavior
-		storageSchemeMeterDemandStoreExcessOnSite,
-		storageSchemeChargeDischargeSchedules,
-		storageSchemeFacilityDemandLeveling
+	enum class storageOpSchemeEnum : int {
+		NotSet,
+		FacilityDemandStoreExcessOnSite, // legacy control behavior
+		MeterDemandStoreExcessOnSite,
+		ChargeDischargeSchedules,
+		FacilityDemandLeveling
 	};
 
 	std::string name; // user identifier
