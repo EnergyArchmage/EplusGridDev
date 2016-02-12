@@ -78,7 +78,7 @@ namespace EnergyPlus {
 
 namespace ElectricPowerService {
 
-	enum class thermalLossDestinationEnum : int {
+	enum class ThermalLossDestination : int {
 		heatLossNotDetermined = 0,
 		zoneGains,
 		lostToOutside
@@ -106,9 +106,9 @@ private: // Creation
 			ancillACuseRate( 0.0 ),
 			ancillACuseEnergy( 0.0 ),
 			name( ""),
-			modelType( inverterModelTypeEnum::notYetSet ),
+			modelType( InverterModelType::notYetSet ),
 			availSchedPtr( 0 ),
-			heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
+			heatLossesDestination( ThermalLossDestination::heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
 			nightTareLossPower( 0.0 ),
@@ -182,7 +182,7 @@ public: // data public for unit test
 		Real64 ancillACuseEnergy;
 
 private: // data
-		enum class inverterModelTypeEnum : int {
+		enum class InverterModelType : int {
 			notYetSet,
 			cECLookUpTableModel,
 			curveFuncOfPower,
@@ -190,9 +190,9 @@ private: // data
 		};
 
 		std::string name; // user identifier
-		inverterModelTypeEnum modelType; // type of inverter model used
+		InverterModelType modelType; // type of inverter model used
 		int availSchedPtr; // number for availability schedule.
-		thermalLossDestinationEnum heatLossesDestination;
+		ThermalLossDestination heatLossesDestination;
 		int zoneNum; // destination zone for heat losses from inverter.
 		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
 		Real64 nightTareLossPower; // CEC lookup table model
@@ -231,8 +231,8 @@ private: // creation
 		ancillACuseEnergy( 0.0 ),
 		name ( "" ), 
 		availSchedPtr( 0 ),
-		modelType( converterModelTypeEnum::NotYetSet ),
-		heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
+		modelType( ConverterModelType::notYetSet ),
+		heatLossesDestination( ThermalLossDestination::heatLossNotDetermined ),
 		zoneNum( 0 ),
 		zoneRadFract( 0.0 ), // radiative fraction for thermal losses to zone
 		nightTareLossPower( 0.0 ), 
@@ -297,17 +297,17 @@ public: // data public for unit test
 		Real64 ancillACuseEnergy;
 
 private: // data
-		enum class converterModelTypeEnum : int {
-			NotYetSet,
-			CurveFuncOfPower,
-			SimpleConstantEff
+		enum class ConverterModelType : int {
+			notYetSet,
+			curveFuncOfPower,
+			simpleConstantEff
 		};
 
 		std::string name; // user identifier
 		int availSchedPtr; // number for availability schedule.
-		converterModelTypeEnum modelType; // type of inverter model used
+		ConverterModelType modelType; // type of inverter model used
 		int curveNum; // performance curve or table index
-		thermalLossDestinationEnum heatLossesDestination;
+		ThermalLossDestination heatLossesDestination;
 		int zoneNum; // destination zone for heat losses from inverter.
 		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
 		Real64 nightTareLossPower; 
@@ -331,9 +331,9 @@ private: // Creation
 			maxRainflowArrayInc( 100 ),
 			myWarmUpFlag( false ),
 			name( "" ),
-			storageModelMode( storageModelTypeEnum::storageTypeNotSet ),
+			storageModelMode( StorageModelType::storageTypeNotSet ),
 			availSchedPtr( 0 ),
-			heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
+			heatLossesDestination( ThermalLossDestination::heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
 			startingEnergyStored( 0.0 ),
@@ -358,7 +358,7 @@ private: // Creation
 			maxDischargeI( 0.0 ),
 			cutoffV( 0.0 ),
 			maxChargeRate( 0.0 ),
-			lifeCalculation( degredationNotSet ),
+			lifeCalculation( BatteyDegredationModelType::degredationNotSet ),
 			lifeCurveNum( 0 ),
 			thisTimeStepStateOfCharge( 0.0 ),
 			lastTimeStepStateOfCharge( 0.0 ),
@@ -486,24 +486,24 @@ public: //data public for unit tests
 
 private: //data
 
-	enum class storageModelTypeEnum : int {
+	enum class StorageModelType : int {
 		storageTypeNotSet = 0,
 		simpleBucketStorage,
 		kiBaMBattery
 	};
 
-	enum degredationModelTypeEnum {
-		degredationNotSet,
-		batteryLifeCalculationYes,
-		batteryLifeCalculationNo
+	enum class BatteyDegredationModelType : int{
+		degredationNotSet = 0,
+		lifeCalculationYes,
+		lifeCalculationNo
 	};
 	int maxRainflowArrayBounds;
 	int const maxRainflowArrayInc = 100;
 	bool myWarmUpFlag;
 	std::string name; // name of this electrical storage module
-	storageModelTypeEnum storageModelMode; // type of model parameter, SimpleBucketStorage
+	StorageModelType storageModelMode; // type of model parameter, SimpleBucketStorage
 	int availSchedPtr; // availability schedule index.
-	thermalLossDestinationEnum heatLossesDestination; // mode for where thermal losses go
+	ThermalLossDestination heatLossesDestination; // mode for where thermal losses go
 	int zoneNum; // destination zone for heat losses from inverter.
 	Real64 zoneRadFract; // radiative fraction for thermal losses to zone
 	Real64 startingEnergyStored; // [J] joules inside at beginning of environment period
@@ -528,7 +528,7 @@ private: //data
 	Real64 maxDischargeI; // [A] maximum discharging current
 	Real64 cutoffV; // [V] cut-off voltage
 	Real64 maxChargeRate; // [1/h]charge rate limit
-	degredationModelTypeEnum lifeCalculation; // [ ]battery life calculation: Yes or No
+	BatteyDegredationModelType lifeCalculation; // [ ]battery life calculation: Yes or No
 	int lifeCurveNum; // [ ]battery life curve name index number
 	//calculated and from elsewhere vars
 	Real64 thisTimeStepStateOfCharge; // [J]
@@ -579,8 +579,8 @@ private: // Creation
 			name( " "),
 			myOneTimeFlag( true ),
 			availSchedPtr( 0 ),
-			usageMode( transformerUseEnum::useNotYetSet ),
-			heatLossesDestination( thermalLossDestinationEnum::heatLossNotDetermined ),
+			usageMode( TransformerUse::usenotYetSet ),
+			heatLossesDestination( ThermalLossDestination::heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFrac( 0.0 ),
 			ratedCapacity( 0.0 ),
@@ -588,7 +588,7 @@ private: // Creation
 			factorTempCoeff( 0.0 ),
 			tempRise( 0.0 ),
 			eddyFrac( 0.0 ),
-			performanceInputMode( transformerPerformanceInputEnum::perfInputMethodNotSet ),
+			performanceInputMode( TransformerPerformanceInput::perfInputMethodNotSet ),
 			ratedEfficiency( 0.0 ),
 			ratedPUL( 0.0 ),
 			ratedTemp( 0.0 ),
@@ -666,13 +666,13 @@ public:
 	std::vector < int > loadCenterObjIndexes; // index array of load centers served by the transformer
 private: //data
 
-	enum class transformerUseEnum : int {
-		useNotYetSet = 0,
+	enum class TransformerUse : int {
+		usenotYetSet = 0,
 		powerInFromGrid, // condition power from grid going into building buss
 		powerOutFromBldgToGrid, // condition power from building buss going out to grid
 		powerFromLoadCenterToBldg // condition power from a load center going into building buss
 	};
-	enum class transformerPerformanceInputEnum : int {
+	enum class TransformerPerformanceInput : int {
 		perfInputMethodNotSet = 0,
 		lossesMethod,
 		efficiencyMethod
@@ -682,8 +682,8 @@ private: //data
 	std::string name; // user identifier
 	bool myOneTimeFlag;
 	int availSchedPtr; // availability schedule index.
-	transformerUseEnum usageMode; // mode for transformer usage
-	thermalLossDestinationEnum heatLossesDestination; // mode for where thermal losses go
+	TransformerUse usageMode; // mode for transformer usage
+	ThermalLossDestination heatLossesDestination; // mode for where thermal losses go
 	int zoneNum; // destination zone for heat losses from inverter.
 	Real64 zoneRadFrac; // radiative fraction for thermal losses to zone
 	Real64 ratedCapacity; // rated capacity [VA]
@@ -691,7 +691,7 @@ private: //data
 	Real64 factorTempCoeff; // thermal coefficient of resistance for winding material
 	Real64 tempRise; // full load temperature rise [C]
 	Real64 eddyFrac; // fraction of eddy current losses []
-	transformerPerformanceInputEnum performanceInputMode; // performance input method
+	TransformerPerformanceInput performanceInputMode; // performance input method
 	Real64 ratedEfficiency; // nameplate efficiency []
 	Real64 ratedPUL; // per unit load for nameplate efficiency []
 	Real64 ratedTemp; // reference temperature for nameplate efficiency [C]
@@ -739,7 +739,7 @@ private: // Creation
 		typeOfName( "" ),
 		compGenTypeOf_Num( 0 ),
 		compPlantTypeOf_Num( 0 ),
-		generatorType( generatorTypeEnum::NotYetSet ),
+		generatorType( GeneratorType::notYetSet ),
 		generatorIndex( 0 ),
 		maxPowerOut( 0.0 ),
 		availSched( " " ),
@@ -798,15 +798,15 @@ private: //Methods
 
 
 public: // data // might make this class a friend of ElectPowerLoadCenter?
-	enum class generatorTypeEnum : int {
-		NotYetSet = 0,
-		ICEngine,
-		CombTurbine,
-		PV,
-		FuelCell,
-		MicroCHP,
-		Microturbine,
-		WindTurbine
+	enum class GeneratorType : int {
+		notYetSet = 0,
+		iCEngine,
+		combTurbine,
+		pV,
+		fuelCell,
+		microCHP,
+		microturbine,
+		windTurbine
 	};
 
 
@@ -814,7 +814,7 @@ public: // data // might make this class a friend of ElectPowerLoadCenter?
 	std::string typeOfName; // equipment type
 	int compGenTypeOf_Num; // Numeric designator for generator CompType (TypeOf), in DataGlobalConstants
 	int compPlantTypeOf_Num; // numeric designator for plant component, in DataPlant
-	generatorTypeEnum generatorType;
+	GeneratorType generatorType;
 	int generatorIndex; // index in generator model data struct
 	Real64 maxPowerOut; // Maximum Power Output (W)
 	std::string availSched; // Operation Schedule.
@@ -842,7 +842,7 @@ private: // Creation
 	// Default Constructor
 	ElectPowerLoadCenter() :
 		numGenerators( 0 ),
-		bussType( electricBussTypeEnum::bussNotYetSet ),
+		bussType( ElectricBussType::notYetSet ),
 		electricityProd( 0.0 ),
 		electProdRate( 0.0 ),
 		thermalProd( 0.0 ),
@@ -853,7 +853,7 @@ private: // Creation
 
 		name( ""),
 		generatorListName( ""),
-		genOperationScheme( generatorOpSchemeEnum::NotYetSet ),
+		genOperationScheme( GeneratorOpScheme::notYetSet ),
 		demandMeterPtr( 0 ),
 		generatorsPresent( false ),
 
@@ -874,7 +874,7 @@ private: // Creation
 		totalPowerRequest( 0.0 ),
 		totalThermalPowerRequest( 0.0 ),
 
-		storageScheme( storageOpSchemeEnum::NotSet ),
+		storageScheme( StorageOpScheme::notYetSet ),
 		trackSorageOpMeterName( "" ),
 		trackStorageOpMeterIndex( 0 ),
 		converterPresent( false ),
@@ -953,8 +953,8 @@ private: //Methods
 	);
 
 public: // data public for unit test
-	enum class electricBussTypeEnum : int {
-		bussNotYetSet,
+	enum class ElectricBussType : int {
+		notYetSet,
 		aCBuss,
 		dCBussInverter,
 		aCBussStorage,
@@ -967,7 +967,7 @@ public: // data public for unit test
 //	int storageModelNum; // simulation model parameter type
 	int numGenerators; // Number of Generators
 	std::vector < std::unique_ptr <GeneratorController> > elecGenCntrlObj; // generator controller objects
-	electricBussTypeEnum bussType; // is this load center powered by AC or DC generators
+	ElectricBussType bussType; // is this load center powered by AC or DC generators
 	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
 	Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
 	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
@@ -980,28 +980,28 @@ public: // data public for unit test
 
 
 private: // data
-	enum class generatorOpSchemeEnum : int {
-		NotYetSet = 0,
-		BaseLoad,
-		DemandLimit,
-		TrackElectrical,
-		TrackSchedule,
-		TrackMeter,
-		ThermalFollow,
-		ThermalFollowLimitElectrical
+	enum class GeneratorOpScheme : int {
+		notYetSet = 0,
+		baseLoad,
+		demandLimit,
+		trackElectrical,
+		trackSchedule,
+		trackMeter,
+		thermalFollow,
+		thermalFollowLimitElectrical
 	};
 
-	enum class storageOpSchemeEnum : int {
-		NotSet,
-		FacilityDemandStoreExcessOnSite, // legacy control behavior
-		MeterDemandStoreExcessOnSite,
-		ChargeDischargeSchedules,
-		FacilityDemandLeveling
+	enum class StorageOpScheme : int {
+		notYetSet = 0,
+		facilityDemandStoreExcessOnSite, // legacy control behavior
+		meterDemandStoreExcessOnSite,
+		chargeDischargeSchedules,
+		facilityDemandLeveling
 	};
 
 	std::string name; // user identifier
 	std::string generatorListName; // List name of available generators
-	generatorOpSchemeEnum genOperationScheme; // Name of Operation Scheme
+	GeneratorOpScheme genOperationScheme; // Name of Operation Scheme
 	std::string demandMeterName; // Name of Demand Energy Meter for "on demand" operation
 	int demandMeterPtr; // "pointer" to Meter for electrical Demand to meet
 	std::string generationMeterName; // Name of Generated Energy Meter for "on demand" operation
@@ -1029,7 +1029,7 @@ private: // data
 	Real64 totalPowerRequest; // Total electric power request from the load center (W)
 	Real64 totalThermalPowerRequest; // Total thermal power request from the load center (W)
 
-	storageOpSchemeEnum storageScheme; // what options are available for charging storage.
+	StorageOpScheme storageScheme; // what options are available for charging storage.
 	std::string trackSorageOpMeterName; // user name for a specific meter
 	int trackStorageOpMeterIndex; // points to meter being 
 	bool converterPresent;

@@ -108,8 +108,8 @@ This field is the name of a schedule that is used control the storage discharge.
 #### Field: Storage Discharge Track Meter Name
 This field is the name of an EnergyPlus electric meter that is used to control storage discharge. The power level from the meter is considered as AC and used to control the discharge.  The rate of discharge is determined by first using an on-site generation and then meeting the remaining load by drawing from storage.  When the storage is DC the discharge rate will be adjusted upward to account for inverter losses (but not transformer losses).   This field is only used, and is required, when the Storage Discharge Operation Scheme Type is set to TrackMeter.  
  
-#### Field: Maximum Storage Discharge Grid Export Power
-This numeric field is the target net power exported to the utility service, in Watts.  This is maximum value and is modified by the values in the schedule named in the following field.  The target export power is used in the control of storage discharge along with the current on-site generation.  This value is the power as viewed from the grid. Power conversion losses from any inverter and/or transformer located between the storage and the utility service connection are considered and the storage discharge will be adjusted higher to compensate.  
+#### Field: Design Storage Discharge Grid Export Power
+This numeric field is the target net power exported to the utility service, in Watts.  This is maximum value and is modified by the values in the schedule named in the following field.  The target export power is used in the control of storage discharge along with the current on-site generation.  This value is the power as viewed from the storage. Power conversion losses from any inverter and/or transformer located between the storage and the utility service connection are considered and the actual grid export will be adjusted lower to compensate.  
 
        
 #### Field: Storage Discharge Grid Export Fraction Schedule Name

@@ -279,7 +279,7 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case1
 
 
 	// Case 1 ACBuss - Generators 1000+2000=3000, thermal 500+750=1250
-	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType = ElectricPowerService::ElectPowerLoadCenter::electricBussTypeEnum::aCBuss;
+	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType = ElectricPowerService::ElectPowerLoadCenter::ElectricBussType::aCBuss;
 
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->elecGenCntrlObj[ 0 ]->electProdRate = 1000.0;
 //	ElecLoadCenter( LoadCenterNum ).ElecGen( 1 ).ElectProdRate = 1000.0;
@@ -357,7 +357,7 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case2
 
 
 	// Case 2 ACBussStorage - Generators 1000+2000=3000, Storage 200-150=50
-	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType = ElectricPowerService::ElectPowerLoadCenter::electricBussTypeEnum::aCBussStorage;
+	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType = ElectricPowerService::ElectPowerLoadCenter::ElectricBussType::aCBussStorage;
 //	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->storagePresent
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->storageObj = std::unique_ptr < ElectricPowerService::ElectricStorage >( new ElectricPowerService::ElectricStorage (  "TEST STORAGE BANK"  ) );
 
@@ -438,7 +438,7 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case3
 
 
 	// Case 3 DCBussInverter   Inverter = 5000,
-	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType = ElectricPowerService::ElectPowerLoadCenter::electricBussTypeEnum::dCBussInverter;
+	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType = ElectricPowerService::ElectPowerLoadCenter::ElectricBussType::dCBussInverter;
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterObj = std::unique_ptr < ElectricPowerService::DCtoACInverter >( new ElectricPowerService::DCtoACInverter( "TEST INVERTER") );
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterPresent = true;
 
@@ -514,7 +514,7 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case4
 
 
 	// Case 4 DCBussInverterDCStorage    Inverter = 5000,
-	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType = ElectricPowerService::ElectPowerLoadCenter::electricBussTypeEnum::dCBussInverterDCStorage ;
+	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType = ElectricPowerService::ElectPowerLoadCenter::ElectricBussType::dCBussInverterDCStorage ;
 
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterObj = std::unique_ptr < ElectricPowerService::DCtoACInverter >( new ElectricPowerService::DCtoACInverter( "TEST INVERTER") );
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterPresent = true;
@@ -591,7 +591,7 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case5
 
 
 	// Case 5 DCBussInverterACStorage     Inverter = 5000, , Storage 200-150=50, thermal should still be same as Case 1
-	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType =  ( ElectricPowerService::ElectPowerLoadCenter::electricBussTypeEnum::dCBussInverterACStorage );
+	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->bussType =  ( ElectricPowerService::ElectPowerLoadCenter::ElectricBussType::dCBussInverterACStorage );
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterObj = std::unique_ptr < ElectricPowerService::DCtoACInverter >( new ElectricPowerService::DCtoACInverter( "TEST INVERTER") );
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterPresent = true;
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->storageObj = std::unique_ptr < ElectricPowerService::ElectricStorage >( new ElectricPowerService::ElectricStorage (  "TEST STORAGE BANK"  ) );
