@@ -494,13 +494,19 @@ namespace ElectricPowerService {
 		this->dCpowerConditionLosses = 0.0;
 		this->storagePresent = false;
 		this->transformerPresent = false;
-		this->electricityProd = 0.0;
-		this->electProdRate = 0.0;
-		this->thermalProd = 0.0;
-		this->thermalProdRate = 0.0;
-		this->totalPowerRequest = 0.0;
+
+		this->thermalProd           = 0.0;
+		this->thermalProdRate       = 0.0;
+		this->totalPowerRequest     = 0.0;
 		this->totalThermalPowerRequest = 0.0;
-		this->electDemand = 0.0;
+		this->subpanelFeedInRate    = 0.0;
+		this->subpanelDrawRate      = 0.0;
+		this->genElectricProd       = 0.0;
+		this->genElectProdRate      = 0.0;
+		this->storOpCVDrawRate      = 0.0;
+		this->storOpCVFeedInRate    = 0.0;
+		this->storOpCVChargeRate    = 0.0;
+		this->storOpCVDischargeRate = 0.0;
 
 		this->storageScheme                     = StorageOpScheme::notYetSet ; // what options are available for charging storage.
 		this->trackSorageOpMeterName            = ""; // user name for a specific meter
@@ -779,9 +785,13 @@ namespace ElectricPowerService {
 		//Setup general output variables for reporting in the electric load center
 
 
-		SetupOutputVariable( "Electric Load Center Produced Electric Power [W]", this->electProdRate, "System", "Average", this->name );
+		SetupOutputVariable( "Electric Load Center Produced Electric Power [W]", this->genElectricProd, "System", "Average", this->name );
 
-		SetupOutputVariable( "Electric Load Center Produced Electric Energy [J]", this->electricityProd, "System", "Sum", this->name );
+		SetupOutputVariable( "Electric Load Center Produced Electric Energy [J]", this->genElectProdRate, "System", "Sum", this->name );
+
+		SetupOutputVariable( "Electric Load Center Supplied Electric Power [W]", this->subpanelFeedInRate, "System", "Average", this->name );
+
+		SetupOutputVariable( "Electric Load Center Drawn Electric Power [W]", this->subpanelDrawRate, "System", "Average", this->name );
 
 		SetupOutputVariable( "Electric Load Center Produced Thermal Rate [W]", this->thermalProdRate, "System", "Average", this->name );
 
@@ -1343,13 +1353,18 @@ namespace ElectricPowerService {
 		this->dCElectricityProd        = 0.0;
 		this->dCElectProdRate          = 0.0;
 		this->dCpowerConditionLosses   = 0.0;
-		this->electricityProd          = 0.0;
-		this->electProdRate            = 0.0;
+		this->genElectricProd          = 0.0;
+		this->genElectProdRate            = 0.0;
 		this->thermalProd              = 0.0;
 		this->thermalProdRate          = 0.0;
 		this->totalPowerRequest        = 0.0;
 		this->totalThermalPowerRequest = 0.0;
-		this->electDemand              = 0.0;
+		this->subpanelFeedInRate       = 0.0;
+		this->subpanelDrawRate         = 0.0;
+		this->storOpCVDrawRate         = 0.0;
+		this->storOpCVFeedInRate       = 0.0;
+		this->storOpCVChargeRate       = 0.0;
+		this->storOpCVDischargeRate    = 0.0;
 
 		if ( this->generatorsPresent && this->numGenerators > 0 ) {
 			for ( auto genLoop=0; genLoop < this->numGenerators; ++genLoop ) {
@@ -1408,47 +1423,75 @@ namespace ElectricPowerService {
 			switch ( this->bussType )
 			{
 			case ElectricBussType::aCBuss: {
-				this->electProdRate = 0.0;
-				this->electricityProd = 0.0;
+				this->genElectProdRate = 0.0;
+				this->genElectricProd = 0.0;
 				for ( auto loop=0; loop < this->numGenerators ; ++loop ) {
-					this->electProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
-					this->electricityProd += this->elecGenCntrlObj[ loop ]->electricityProd;
+					this->genElectProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
+					this->genElectricProd += this->elecGenCntrlObj[ loop ]->electricityProd;
 				}
+				// no inverter, no storage, so generator production equals subpanel feed in
+				this->subpanelFeedInRate = this->genElectProdRate;
+				this->subpanelDrawRate   = 0.0;
+
 				break;
 			}
 			case ElectricBussType::aCBussStorage: {
-				this->electProdRate = 0.0;
-				this->electricityProd = 0.0;
+				this->genElectProdRate = 0.0;
+				this->genElectricProd = 0.0;
 				for ( auto loop=0; loop < this->numGenerators ; ++loop ) {
-					this->electProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
-					this->electricityProd += this->elecGenCntrlObj[ loop ]->electricityProd;
+					this->genElectProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
+					this->genElectricProd += this->elecGenCntrlObj[ loop ]->electricityProd;
 				}
 				if ( this->storagePresent ) {
-					this->electProdRate += ( this->storageObj->getDrawnPower() -  this->storageObj->getStoredPower() );
-					this->electricityProd += ( this->storageObj->getDrawnEnergy() -  this->storageObj->getStoredEnergy() );
+					this->subpanelFeedInRate = this->genElectProdRate + this->storOpCVDischargeRate - this->storOpCVChargeRate;
 				}
+				this->subpanelDrawRate   = 0.0;
 				break;
 			}
 			case ElectricBussType::dCBussInverter: {
-				if ( this->inverterPresent ) {
-					this->electProdRate = this->inverterObj->getACPowerOut();
-					this->electricityProd = this->inverterObj->getACEnergyOut();
+				this->genElectProdRate = 0.0;
+				this->genElectricProd = 0.0;
+				for ( auto loop=0; loop < this->numGenerators ; ++loop ) {
+					this->genElectProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
+					this->genElectricProd += this->elecGenCntrlObj[ loop ]->electricityProd;
 				}
+
+				if ( this->inverterPresent ) {
+					this->subpanelFeedInRate = this->inverterObj->getACPowerOut();
+					//this->electricityProd = this->inverterObj->getACEnergyOut();
+				}
+				this->subpanelDrawRate   = 0.0;
 				break;
 			}
 
 			case ElectricBussType::dCBussInverterDCStorage: {
+				this->genElectProdRate = 0.0;
+				this->genElectricProd = 0.0;
+				for ( auto loop=0; loop < this->numGenerators ; ++loop ) {
+					this->genElectProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
+					this->genElectricProd += this->elecGenCntrlObj[ loop ]->electricityProd;
+				}
 				if ( this->inverterPresent ) {
-					this->electProdRate = this->inverterObj->getACPowerOut();
-					this->electricityProd = this->inverterObj->getACEnergyOut();
+					this->subpanelFeedInRate = this->inverterObj->getACPowerOut();
+				}
+				if ( this->converterPresent ) {
+					this->subpanelDrawRate   = this->converterObj->getACPowerIn();
 				}
 				break;
 			}
 			case ElectricBussType::dCBussInverterACStorage: {
-				if ( this->inverterPresent && this->storagePresent  ) {
-					this->electProdRate = this->inverterObj->getACPowerOut() +  ( this->storageObj->getDrawnPower() -  this->storageObj->getStoredPower() );
-					this->electricityProd = this->inverterObj->getACEnergyOut() + ( this->storageObj->getDrawnEnergy() -  this->storageObj->getStoredEnergy() );
+				this->genElectProdRate = 0.0;
+				this->genElectricProd = 0.0;
+				for ( auto loop=0; loop < this->numGenerators ; ++loop ) {
+					this->genElectProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
+					this->genElectricProd += this->elecGenCntrlObj[ loop ]->electricityProd;
 				}
+				if ( this->inverterPresent && this->storagePresent  ) {
+					this->subpanelFeedInRate = this->inverterObj->getACPowerOut() +  this->storOpCVDischargeRate - this->storOpCVChargeRate;
+				}
+
+				this->subpanelDrawRate   = this->storOpCVDrawRate; // no converter for AC storage
+
 				break;
 			}
 			case ElectricBussType::notYetSet: {
@@ -2152,6 +2195,11 @@ namespace ElectricPowerService {
 	Real64 ACtoDCConverter::getDCEnergyOut()
 	{
 		return this->dCEnergyOut;
+	}
+
+	Real64 ACtoDCConverter::getACPowerIn()
+	{
+		return this->aCPowerIn;
 	}
 
 	void ACtoDCConverter::manageConverter(

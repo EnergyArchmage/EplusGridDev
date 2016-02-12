@@ -293,8 +293,8 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case1
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->elecGenCntrlObj[ 1 ]->thermalProd     = 750.0*3600.0;
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->updateLoadCenterRecords();
 
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electProdRate , 3000.0, 0.1);
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electricityProd, 3000.0*3600.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectProdRate , 3000.0, 0.1);
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectricProd, 3000.0*3600.0, 0.1 );
 	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->thermalProdRate, 1250.0, 0.1 );
 	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->thermalProd, 1250.0*3600.0, 0.1 );
 
@@ -379,8 +379,8 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case2
 
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->updateLoadCenterRecords();
 
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electProdRate, 3050.0, 0.1 );
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electricityProd, 3050.0*3600.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectProdRate, 3050.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectricProd, 3050.0*3600.0, 0.1 );
 
 	}
 
@@ -446,8 +446,8 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case3
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterObj->aCEnergyOut = 5000.0*3600.0;
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->updateLoadCenterRecords();
 
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electProdRate,   5000.0, 0.1 );
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electricityProd, 5000.0*3600.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectProdRate,   5000.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectricProd, 5000.0*3600.0, 0.1 );
 }
 
 TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case4 )
@@ -523,8 +523,8 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case4
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterObj->aCEnergyOut = 5000.0*3600.0;
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->updateLoadCenterRecords();
 
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electProdRate,   5000.0, 0.1 );
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electricityProd, 5000.0*3600.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectProdRate,   5000.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectricProd, 5000.0*3600.0, 0.1 );
 }
 
 TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case5 )
@@ -607,8 +607,8 @@ TEST_F( EnergyPlusFixture, ManageElectricPowerTest_UpdateLoadCenterRecords_Case5
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->inverterObj->aCEnergyOut = 5000.0*3600.0;
 	ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->updateLoadCenterRecords();
 
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electProdRate,   5050.0, 0.1 );
-	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->electricityProd, 5050.0*3600.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectProdRate,   5050.0, 0.1 );
+	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->genElectricProd, 5050.0*3600.0, 0.1 );
 	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->thermalProdRate, 1250.0, 0.1 );
 	EXPECT_NEAR( ElectricPowerService::facilityElectricServiceObj->elecLoadCenterObjs[ 0 ]->thermalProd, 1250.0*3600.0, 0.1 );
 

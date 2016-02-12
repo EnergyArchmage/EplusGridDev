@@ -279,6 +279,9 @@ public: // Methods
 	Real64
 	getDCEnergyOut();
 
+	Real64 
+	getACPowerIn();
+
 public: // data public for unit test
 	
 		Real64 efficiency;
@@ -838,18 +841,29 @@ public: // data // might make this class a friend of ElectPowerLoadCenter?
 class ElectPowerLoadCenter
 {
 
+// a load center can be thought of as a kind of subpanel that connects power equipment to the main panel
+// multiple subpanels can be connected to the main panel and each ElectPowerLoadCenter object is a subpanel
+
 private: // Creation
 	// Default Constructor
 	ElectPowerLoadCenter() :
 		numGenerators( 0 ),
 		bussType( ElectricBussType::notYetSet ),
-		electricityProd( 0.0 ),
-		electProdRate( 0.0 ),
+
 		thermalProd( 0.0 ),
 		thermalProdRate( 0.0 ),
 		inverterPresent( false ),
 		inverterName( " "),
-		electDemand( 0.0 ),
+//		subpanelFeedInElectric( 0.0 ),
+		subpanelFeedInRate( 0.0 ),
+//		subpanelDrawElectric( 0.0 ),
+		subpanelDrawRate( 0.0 ),
+		genElectricProd( 0.0 ),
+		genElectProdRate( 0.0 ),
+		storOpCVDrawRate( 0.0 ),
+		storOpCVFeedInRate( 0.0 ),
+		storOpCVChargeRate( 0.0 ),
+		storOpCVDischargeRate( 0.0 ),
 
 		name( ""),
 		generatorListName( ""),
@@ -968,14 +982,29 @@ public: // data public for unit test
 	int numGenerators; // Number of Generators
 	std::vector < std::unique_ptr <GeneratorController> > elecGenCntrlObj; // generator controller objects
 	ElectricBussType bussType; // is this load center powered by AC or DC generators
-	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
-	Real64 electProdRate; // Current Electric Production Rate from Equipment (W)
-	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
-	Real64 thermalProdRate; // Current Thermal energy Production Rate from Equipment (W)
+
+
+	Real64 thermalProd; // Current thermal energy Produced from generators in load center (J)
+	Real64 thermalProdRate; // Current thermal energy production rate from generators in load center (W)
 	bool inverterPresent;
 	std::string inverterName; // hold name for verificaton and error messages
 	std::unique_ptr < DCtoACInverter > inverterObj;
-	Real64 electDemand; // Current electric power demand on the load center (W)
+
+
+	// subpanel terms, interact with main panel
+//	Real64 subpanelFeedInElectric; // Current AC electric fed into main panel by load center, adjusted by inverter if any (J)
+	Real64 subpanelFeedInRate; // Current AC electric power fed into main panel by load center, adjusted by inverter if any (W)
+//	Real64 subpanelDrawElectric; // Current AC electric drawn from main panel into load center (J)
+	Real64 subpanelDrawRate; // Current AC electric power draw from main panel into load center (W)
+
+	// storage operation terms, 
+	Real64 genElectricProd; // Current electric produced by generators in the load center, DC or AC (J)
+	Real64 genElectProdRate; // Current electric power produced by generators in the load center, DC or AC (W)
+	Real64 storOpCVDrawRate; // power drawn from main panel into storage operation control volume after any converter, DC or AC ( W )
+	Real64 storOpCVFeedInRate; // power fed toward main panel from storage operation control volume before any inverter, DC or AC ( W )
+	Real64 storOpCVChargeRate; // power fed into storage device from storage operation control volume, before any storage losses, DC or AC ( W )
+	Real64 storOpCVDischargeRate; // power drawn from storage device into storage operation control volume, after any storage losses, DC or AC ( W )
+
 
 
 
