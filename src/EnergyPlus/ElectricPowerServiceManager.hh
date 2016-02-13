@@ -367,11 +367,11 @@ private: // Creation
 			lastTimeStepStateOfCharge( 0.0 ),
 			pelNeedFromStorage( 0.0 ),
 			pelFromStorage( 0.0 ),
-			eMSOverridePelFromStorage( false ),
-			eMSValuePelFromStorage( 0.0 ),
+//			eMSOverridePelFromStorage( false ),
+//			eMSValuePelFromStorage( 0.0 ),
 			pelIntoStorage( 0.0 ),
-			eMSOverridePelIntoStorage( false ),
-			eMSValuePelIntoStorage( 0.0 ),
+//			eMSOverridePelIntoStorage( false ),
+//			eMSValuePelIntoStorage( 0.0 ),
 			qdotConvZone( 0.0 ),
 			qdotRadZone( 0.0 ),
 			timeElapsed( 0.0 ),
@@ -416,6 +416,32 @@ public: //methods
 	);
 
 	void
+	timeCheckAndUpdate();
+
+	void
+	checkDeviceConstraints(
+		Real64 & powerCharge,
+		Real64 & powerDischarge,
+		bool & charging,
+		bool & discharging,
+		Real64 const controlSOCMaxFracLimit,
+		Real64 const controlSOCMinFracLimit
+	);
+
+
+
+
+	void
+	calcAndReportSimpleBucketModel();
+
+	void
+	trailCalcKinetcBatteryModel();
+
+	void
+	calcAndReportKineticBatteryModel();
+
+// move some of this up to load center, storage operation scheme stuff pulled out of battery 
+	void
 	manageElectCenterStorageInteractions(
 		Real64 const powerDemand, // load center power demand minus any inverter losses that need to be applied
 		Real64 const powerGenSupply, // sum of load center generator production
@@ -457,6 +483,21 @@ public: //methods
 	);
 
 private: //methods
+
+	void
+	constrainSimpleBucketModel( // request charge discharge and 
+		Real64 & powerCharge,
+		Real64 & powerDischarge,
+		bool & charging,
+		bool & discharging,
+		Real64 const controlSOCMaxFracLimit,
+		Real64 const controlSOCMinFracLimit
+	);
+
+	void
+	constrainKineticBatteryModel(
+	
+	);
 
 	void
 	rainflow(
@@ -536,13 +577,17 @@ private: //data
 	//calculated and from elsewhere vars
 	Real64 thisTimeStepStateOfCharge; // [J]
 	Real64 lastTimeStepStateOfCharge; // [J]
+
+// move to load center
 	Real64 pelNeedFromStorage; // [W]
 	Real64 pelFromStorage; // [W]
-	bool eMSOverridePelFromStorage; // if true, EMS calling for override
-	Real64 eMSValuePelFromStorage; // value EMS is directing to use, power from storage [W]
+//	bool eMSOverridePelFromStorage; // if true, EMS calling for override
+//	Real64 eMSValuePelFromStorage; // value EMS is directing to use, power from storage [W]
 	Real64 pelIntoStorage; // [W]
-	bool eMSOverridePelIntoStorage; // if true, EMS calling for override
-	Real64 eMSValuePelIntoStorage; // value EMS is directing to use, power into storage [W]
+//	bool eMSOverridePelIntoStorage; // if true, EMS calling for override
+//	Real64 eMSValuePelIntoStorage; // value EMS is directing to use, power into storage [W]
+// move to load center
+
 	Real64 qdotConvZone; // [W]
 	Real64 qdotRadZone; // [W]
 	Real64 timeElapsed; // [h]
@@ -854,6 +899,7 @@ private: // Creation
 		thermalProdRate( 0.0 ),
 		inverterPresent( false ),
 		inverterName( " "),
+		subpanelFeedInRequest( 0.0 ),
 //		subpanelFeedInElectric( 0.0 ),
 		subpanelFeedInRate( 0.0 ),
 //		subpanelDrawElectric( 0.0 ),
@@ -958,7 +1004,7 @@ private: //Methods
 
 	void
 	dispatchStorage(
-		Real64 & remainingPowerDemand
+		Real64 const remainingPowerDemand
 	);
 
 	void
@@ -990,7 +1036,7 @@ public: // data public for unit test
 	std::string inverterName; // hold name for verificaton and error messages
 	std::unique_ptr < DCtoACInverter > inverterObj;
 
-
+	Real64 subpanelFeedInRequest; 
 	// subpanel terms, interact with main panel
 //	Real64 subpanelFeedInElectric; // Current AC electric fed into main panel by load center, adjusted by inverter if any (J)
 	Real64 subpanelFeedInRate; // Current AC electric power fed into main panel by load center, adjusted by inverter if any (W)
@@ -1000,10 +1046,13 @@ public: // data public for unit test
 	// storage operation terms, 
 	Real64 genElectricProd; // Current electric produced by generators in the load center, DC or AC (J)
 	Real64 genElectProdRate; // Current electric power produced by generators in the load center, DC or AC (W)
+	Real64 storOpCVGenRate; // power from generators (and maybe inverter) going into storage operation control volume, DC or AC ( W )
 	Real64 storOpCVDrawRate; // power drawn from main panel into storage operation control volume after any converter, DC or AC ( W )
 	Real64 storOpCVFeedInRate; // power fed toward main panel from storage operation control volume before any inverter, DC or AC ( W )
 	Real64 storOpCVChargeRate; // power fed into storage device from storage operation control volume, before any storage losses, DC or AC ( W )
 	Real64 storOpCVDischargeRate; // power drawn from storage device into storage operation control volume, after any storage losses, DC or AC ( W )
+	bool storOpIsCharging;
+	bool storOpIsDischarging; 
 
 
 
@@ -1073,8 +1122,10 @@ private: // data
 	int storageDischargeModSchedIndex; // index of fraction schedule for controlling discharge rate over time.
 	Real64 facilityDemandTarget; // target utility demand level in Watts
 	int facilityDemandTargetModSchedIndex; // index of fracton schedule for controlling target demand over time.
-
-
+	bool eMSOverridePelFromStorage; // if true, EMS calling for override
+	Real64 eMSValuePelFromStorage; // value EMS is directing to use, power from storage [W]
+	bool eMSOverridePelIntoStorage; // if true, EMS calling for override
+	Real64 eMSValuePelIntoStorage; // value EMS is directing to use, power into storage [W]
 
 }; //class ElectPowerLoadCenter
 

@@ -799,6 +799,10 @@ namespace ElectricPowerService {
 
 		SetupOutputVariable( "Electric Load Center Requested Electric Power [W]", this->totalPowerRequest, "System", "Average", this->name );
 
+		if ( DataGlobals::AnyEnergyManagementSystemInModel ) {
+				SetupEMSActuator( "Electrical Storage", this->name , "Power Draw Rate", "[W]", this->eMSOverridePelFromStorage, this->eMSValuePelFromStorage );
+				SetupEMSActuator( "Electrical Storage", this->name , "Power Charge Rate", "[W]", this->eMSOverridePelIntoStorage, this->eMSValuePelIntoStorage );
+		}
 
 	}
 
@@ -809,6 +813,7 @@ namespace ElectricPowerService {
 	)
 	{
 		//
+		this->subpanelFeedInRequest = remainingWholePowerDemand;
 
 		if( this->generatorsPresent ) {
 			this->dispatchGenerators(
@@ -817,46 +822,16 @@ namespace ElectricPowerService {
 			);
 		} // if generators present
 
-//		this->electDemand = loadCenterElectricLoad; //To obtain the load for transformer TODO check this
-
-
-		switch ( this->bussType )
-		{
-		case ElectricBussType::notYetSet :
-		case ElectricBussType::aCBuss : {
-			// do nothing, no other equipment to call
-			break;
+		if ( this->bussType == ElectricBussType::dCBussInverter || this->bussType == ElectricBussType::dCBussInverterACStorage) {
+			this->inverterObj->manageInverter( this->genElectProdRate, 0.0 ); 
 		}
-		case ElectricBussType::dCBussInverter : {
-			this->dCElectProdRate = 0.0;
-			for ( auto loopGen = 0; loopGen < this->numGenerators; ++loopGen ) {
-				this->dCElectProdRate += this->elecGenCntrlObj[ loopGen ]->dCElectProdRate;
-			}
-			this->inverterObj->manageInverter( this->dCElectProdRate, 0.0 ); 
-			break;
+
+		if ( this->storagePresent ) {
+			this->storageObj->timeCheckAndUpdate();
+			this->dispatchStorage( this->subpanelFeedInRequest );
+
 		}
-		case ElectricBussType::aCBussStorage : {
 
-
-		
-			break;
-		}
-		case ElectricBussType::dCBussInverterDCStorage : {
-		
-			if ( this->storageScheme == StorageOpScheme::facilityDemandStoreExcessOnSite ) {
-			
-			}
-
-
-
-			break;
-		}
-		case ElectricBussType::dCBussInverterACStorage : {
-		
-			break;
-		}
-		
-		} // end switch buss type
 
 		Real64 storageDrawnPower = 0.0;
 		Real64 storageStoredPower = 0.0;
@@ -1327,6 +1302,150 @@ namespace ElectricPowerService {
 			// do nothing
 		}
 		} // end switch
+
+		// sum up generator production
+		this->genElectProdRate = 0.0;
+		this->genElectricProd = 0.0;
+		for ( auto loop=0; loop < this->numGenerators ; ++loop ) {
+			this->genElectProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
+			this->genElectricProd += this->elecGenCntrlObj[ loop ]->electricityProd;
+		}
+
+	}
+
+	void
+	ElectPowerLoadCenter::dispatchStorage( 
+		Real64 const originalFeedInRequest
+	 )
+	{
+
+		Real64 adjustedFeedInRequest = 0.0;
+		switch ( this->bussType )
+		{
+			case ElectricBussType::notYetSet :
+			case ElectricBussType::aCBuss : 
+			case ElectricBussType::dCBussInverter : {
+				// do nothing, no storage to manage
+				break;
+			}
+			case ElectricBussType::aCBussStorage : {
+				this->storOpCVGenRate = this->genElectProdRate;
+				adjustedFeedInRequest = originalFeedInRequest;
+				break;
+			}
+			case ElectricBussType::dCBussInverterDCStorage : {
+				this->storOpCVGenRate = this->genElectProdRate;
+				adjustedFeedInRequest = originalFeedInRequest + this->inverterObj->getThermLossRate(); // add in inverter power conditioning losses
+				break;
+			}
+			case ElectricBussType::dCBussInverterACStorage : {
+				this->storOpCVGenRate = this->inverterObj->getACPowerOut();
+				adjustedFeedInRequest = originalFeedInRequest;
+				break;
+			}
+		} // end switch buss type
+
+
+		switch ( this->storageScheme )
+		{
+			case StorageOpScheme::notYetSet : {
+				// do nothing
+				break;
+			}
+			case StorageOpScheme::facilityDemandStoreExcessOnSite : {
+				// this is the legacy behavior but with more limits from storage control operation information
+
+				// no draws from main panel
+				this->storOpCVDrawRate = 0.0;
+
+				// step 1 figure out what is desired of electrical storage system
+
+				if ( this->storOpCVGenRate < ( adjustedFeedInRequest ) ) {
+					//draw from storage
+					this->storOpCVDischargeRate = adjustedFeedInRequest - this->storOpCVGenRate;
+					this->storOpCVChargeRate    = 0.0;
+					this->storOpIsDischarging   = true;
+					this->storOpIsCharging      = false;
+
+				} else if ( this->storOpCVGenRate > ( adjustedFeedInRequest ) ) {
+					//add to storage
+					this->storOpCVDischargeRate = this->storOpCVGenRate - adjustedFeedInRequest;
+					this->storOpCVChargeRate    = 0.0;
+					this->storOpIsCharging      = true;
+					this->storOpIsDischarging   = false;
+
+				} else if ( this->storOpCVGenRate == ( adjustedFeedInRequest ) ) {
+					//do nothing
+					this->storOpCVDischargeRate = 0.0;
+					this->storOpCVChargeRate    = 0.0;
+					this->storOpIsCharging      = false;
+					this->storOpIsDischarging   = false;
+				}
+
+						//handle EMS overrides
+				if ( ( this->eMSOverridePelFromStorage ) && ( ! this->eMSOverridePelIntoStorage ) ) {
+					// EMS is calling for specific discharge rate
+					this->storOpCVDischargeRate = max( this->eMSValuePelFromStorage, 0.0 );
+					this->storOpCVChargeRate = 0.0;
+					storOpIsDischarging = true;
+					this->storOpIsCharging = false;
+				} else if ( ( ! this->eMSOverridePelFromStorage ) && ( this->eMSOverridePelIntoStorage ) ) {
+					// EMS is calling for specific charge rate
+					this->storOpCVChargeRate = max( this->eMSValuePelIntoStorage, 0.0 );
+					this->storOpCVDischargeRate = 0.0;
+					storOpIsDischarging = false;
+					this->storOpIsCharging = true;
+				} else if ( ( this->eMSOverridePelFromStorage ) && ( this->eMSOverridePelIntoStorage ) ) {
+					// EMS is asking to override both
+					if ( this->eMSValuePelIntoStorage > this->eMSValuePelFromStorage ) {
+						this->storOpCVChargeRate = this->eMSValuePelIntoStorage - this->eMSValuePelFromStorage;
+						this->storOpCVDischargeRate = 0.0;
+						storOpIsDischarging = false;
+						this->storOpIsCharging = true;
+					} else if ( this->eMSValuePelIntoStorage < this->eMSValuePelFromStorage ) {
+						this->storOpCVDischargeRate = this->eMSValuePelFromStorage - this->eMSValuePelIntoStorage;
+						this->storOpCVChargeRate = 0.0;
+						storOpIsDischarging = true;
+						this->storOpIsCharging = false;
+					} else { //they equal just hold
+						this->storOpCVDischargeRate = 0.0;
+						this->storOpCVChargeRate = 0.0;
+						storOpIsDischarging = false;
+						this->storOpIsCharging = false;
+					}
+				}
+
+				//check against the controller limits
+				this->storOpCVChargeRate    = min( this->storOpCVChargeRate,    this->designStorageChargePower );
+				this->storOpCVDischargeRate = min( this->storOpCVDischargeRate, this->designStoragetDischargePower );
+
+
+				//check against what the device can really do, passing what controller wants for SOC limits
+				this->storageObj->checkDeviceConstraints( this->storOpCVChargeRate, this->storOpCVChargeRate,storOpIsCharging,storOpIsDischarging, this->maxStorageSOCFraction, this->minStorageSOCFraction );
+
+
+
+				break;
+			}
+			case StorageOpScheme::meterDemandStoreExcessOnSite : {
+				
+				// no draws from main panel
+				this->storOpCVDrawRate = 0.0;
+				break;
+			}
+			case StorageOpScheme::chargeDischargeSchedules : {
+			
+				break;
+			}
+			case StorageOpScheme::facilityDemandLeveling : {
+			
+				break;
+			}
+		}
+
+		//dispatch final request to storage device, calculate, update, and report storage device
+
+
 
 	}
 
@@ -2252,11 +2371,11 @@ namespace ElectricPowerService {
 		this->lastTimeStepStateOfCharge = 0.0;
 		this->pelNeedFromStorage = 0.0;
 		this->pelFromStorage = 0.0;
-		this->eMSOverridePelFromStorage = false;
-		this->eMSValuePelFromStorage = 0.0;
+//		this->eMSOverridePelFromStorage = false;
+//		this->eMSValuePelFromStorage = 0.0;
 		this->pelIntoStorage = 0.0;
-		this->eMSOverridePelIntoStorage = false;
-		this->eMSValuePelIntoStorage = 0.0;
+//		this->eMSOverridePelIntoStorage = false;
+//		this->eMSValuePelIntoStorage = 0.0;
 		this->qdotConvZone = 0.0;
 		this->qdotRadZone = 0.0;
 		this->timeElapsed = 0.0;
@@ -2470,8 +2589,8 @@ namespace ElectricPowerService {
 				} else if ( this->storageModelMode == StorageModelType::kiBaMBattery ) {
 					SetupEMSInternalVariable( "Electrical Storage Maximum Capacity", this->name , "[Ah]", this->maxAhCapacity );
 				}
-				SetupEMSActuator( "Electrical Storage", this->name , "Power Draw Rate", "[W]", this->eMSOverridePelFromStorage, this->eMSValuePelFromStorage );
-				SetupEMSActuator( "Electrical Storage", this->name , "Power Charge Rate", "[W]", this->eMSOverridePelIntoStorage, this->eMSValuePelIntoStorage );
+//				SetupEMSActuator( "Electrical Storage", this->name , "Power Draw Rate", "[W]", this->eMSOverridePelFromStorage, this->eMSValuePelFromStorage );
+//				SetupEMSActuator( "Electrical Storage", this->name , "Power Charge Rate", "[W]", this->eMSOverridePelIntoStorage, this->eMSValuePelIntoStorage );
 			}
 
 			if ( this->zoneNum > 0 ) {
@@ -2552,6 +2671,140 @@ namespace ElectricPowerService {
 	{
 		this->qdotConvZone            = 0.0;
 		this->qdotRadZone             = 0.0;
+	}
+
+	void
+	ElectricStorage::timeCheckAndUpdate()
+	{
+			Real64 timeElapsed = DataGlobals::HourOfDay + DataGlobals::TimeStep * DataGlobals::TimeStepZone + DataHVACGlobals::SysTimeElapsed;
+		if ( this->timeElapsed != timeElapsed ) { //time changed, update last with "current" result from previous time
+			if ( this->storageModelMode == StorageModelType::kiBaMBattery && this->lifeCalculation == BatteyDegredationModelType::lifeCalculationYes ) {
+				//    At this point, the current values, last time step values and last two time step values have not been updated, hence:
+				//    "ThisTimeStep*" actually points to the previous one time step
+				//    "LastTimeStep*" actually points to the previous two time steps
+				//    "LastTwoTimeStep" actually points to the previous three time steps
+
+				//      Calculate the fractional SOC change between the "current" time step and the "previous one" time step
+				Real64 deltaSOC1 = this->thisTimeStepAvailable +this->thisTimeStepBound - this->lastTimeStepAvailable - this->lastTimeStepBound;
+				deltaSOC1 /= this->maxAhCapacity;
+
+				//      Calculate the fractional SOC change between the "previous one" time step and the "previous two" time steps
+				Real64 deltaSOC2 = this->lastTimeStepAvailable + this->lastTimeStepBound - this->lastTwoTimeStepAvailable - this->lastTwoTimeStepBound;
+				deltaSOC2 /= this->maxAhCapacity;
+
+				//     DeltaSOC2 = 0 may occur at the begining of each simulation environment.
+				//     DeltaSOC1 * DeltaSOC2 means that the SOC from "LastTimeStep" is a peak or valley. Only peak or valley needs
+				//     to call the rain flow algorithm
+				if ( ( deltaSOC2 == 0 ) || ( ( deltaSOC1 * deltaSOC2 ) < 0 ) ) {
+					//     Because we cannot determine whehter "ThisTimeStep" is a peak or valley (next time step is unknown yet), we
+					//     use the "LastTimeStep" value for battery life calculation.
+					Real64 input0 = ( this->lastTimeStepAvailable + this->lastTimeStepBound ) / this->maxAhCapacity;
+					this->b10[ this->count0 ] = input0;
+
+					//        The arrary size needs to be increased when count = MaxRainflowArrayBounds. Please note that (MaxRainflowArrayBounds +1)
+					//        is the index used in the subroutine RainFlow. So we cannot reallocate array size until count = MaxRainflowArrayBounds +1.
+					if ( this->count0 == this->maxRainflowArrayBounds ) {
+						this->b10.resize( this->maxRainflowArrayBounds + 1 + this->maxRainflowArrayInc, 0.0 );
+						this->x0.resize( this->maxRainflowArrayBounds + 1 + this->maxRainflowArrayInc, 0.0 );
+						this->maxRainflowArrayBounds += this->maxRainflowArrayInc;
+					}
+
+					this->rainflow( this->cycleBinNum, input0, this->b10, this->x0, this->count0, this->nmb0, this->oneNmb0);
+
+					this->batteryDamage = 0.0;
+
+					for ( auto binNum = 0; binNum < this->cycleBinNum; ++binNum ) {
+						//       Battery damage is calculated by accumulating the impact from each cycle.
+						this->batteryDamage += this->oneNmb0[ binNum ] / CurveManager::CurveValue( this->lifeCurveNum, ( double( binNum ) / double( this->cycleBinNum ) ) );
+					}
+				}
+			}
+
+			this->lastTimeStepStateOfCharge = this->thisTimeStepStateOfCharge;
+			this->lastTwoTimeStepAvailable = this->lastTimeStepAvailable;
+			this->lastTwoTimeStepBound = this->lastTimeStepBound;
+			this->lastTimeStepAvailable = this->thisTimeStepAvailable;
+			this->lastTimeStepBound = this->thisTimeStepBound;
+			this->timeElapsed = timeElapsed;
+
+		} // end if time changed
+	}
+
+	void
+	ElectricStorage::checkDeviceConstraints(
+		Real64 & powerCharge,
+		Real64 & powerDischarge,
+		bool & charging,
+		bool & discharging,
+		Real64 const controlSOCMaxFracLimit,
+		Real64 const controlSOCMinFracLimit
+	)
+	{
+		// pass thru to constrain function depending on storage model type 
+		if ( ScheduleManager::GetCurrentScheduleValue( this->availSchedPtr ) == 0.0 ) { // storage not available
+			discharging = false;
+			powerDischarge = 0.0;
+			charging = false;
+			powerCharge = 0.0;
+			return;
+		}
+
+		if ( this->storageModelMode == StorageModelType::simpleBucketStorage ) {
+			this->constrainSimpleBucketModel( powerCharge, powerDischarge, charging, discharging, controlSOCMaxFracLimit,controlSOCMinFracLimit );
+		} else if ( this->storageModelMode == StorageModelType::kiBaMBattery ) {
+			this->constrainKineticBatteryModel(); //TODO 
+		}
+	
+	}
+
+	void
+	ElectricStorage::constrainSimpleBucketModel(
+		Real64 & powerCharge,
+		Real64 & powerDischarge,
+		bool & charging,
+		bool & discharging,
+		Real64 const controlSOCMaxFracLimit,
+		Real64 const controlSOCMinFracLimit
+	)
+	{
+		// given arguments for how the storage operation would like to run storage charge or discharge
+		// apply model constraints and adjust arguments accordingly
+
+
+
+		if ( charging ) {
+
+			if ( this->lastTimeStepStateOfCharge >= (this->maxEnergyCapacity * controlSOCMaxFracLimit) ) {
+				// storage full!  no more allowed!
+				powerCharge = 0.0;
+				charging = false;
+			}
+			if ( powerCharge > this->maxPowerStore ) {
+				powerCharge = this->maxPowerStore;
+			}
+
+			//now check to see if charge would exceed capacity, and modify to just fill physical storage cap
+			if ( ( this->lastTimeStepStateOfCharge + powerCharge * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour * this->energeticEfficCharge ) >= (this->maxEnergyCapacity * controlSOCMaxFracLimit) ) {
+				powerCharge = ( ( this->maxEnergyCapacity * controlSOCMaxFracLimit) - this->lastTimeStepStateOfCharge ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour * this->energeticEfficCharge );
+			}
+
+		} //charging
+
+		if ( discharging ) {
+
+			if ( this->lastTimeStepStateOfCharge <= (this->maxEnergyCapacity * controlSOCMinFracLimit) ) {
+				// storage empty  no more allowed!
+				powerDischarge = 0.0;
+				discharging = false;
+			}
+			if ( powerDischarge > this->maxPowerDraw ) {
+				powerDischarge = this->maxPowerDraw;
+			}
+			//now take energy from storage by drawing  (amplified by energetic effic)
+			if ( ( this->lastTimeStepStateOfCharge - powerDischarge * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour / this->energeticEfficDischarge ) <= ( this->maxEnergyCapacity * controlSOCMinFracLimit ) ) {
+				powerDischarge = ( this->lastTimeStepStateOfCharge - ( this->maxEnergyCapacity * controlSOCMinFracLimit ) ) * this->energeticEfficDischarge / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+			}
+		}
 	}
 
 	void
@@ -2936,8 +3189,8 @@ namespace ElectricPowerService {
 				this->storageMode = 2;
 //TODO change sign convention here		this->storedPower = -1.0 * Volt * I0 * numbattery;
 //TODO change sign convention here				this->storedEnergy = -1.0 * Volt * I0 * numbattery * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
-				this->storedPower = Volt * I0 * this->numBattery;
-				this->storedEnergy =  Volt * I0 * this->numBattery * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+				this->storedPower = -1.0 *Volt * I0 * this->numBattery;
+				this->storedEnergy =  -1.0 *Volt * I0 * this->numBattery * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
 // TODO, this next is a sign mistake in current dev, only mimic for no diff check in.
 //				this->decrementedEnergyStored = this->storedEnergy;  // should be this
 				this->decrementedEnergyStored = -1.0 * this->storedEnergy; // this is wrong
