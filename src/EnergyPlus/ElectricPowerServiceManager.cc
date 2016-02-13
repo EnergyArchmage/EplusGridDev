@@ -1315,11 +1315,11 @@ namespace ElectricPowerService {
 
 	void
 	ElectPowerLoadCenter::dispatchStorage( 
-		Real64 const originalFeedInRequest
+		Real64 const originalFeedInRequest // whole building remaining electric demand for this load center
 	 )
 	{
 
-		Real64 adjustedFeedInRequest = 0.0;
+		//1. resolve generator power rate into storage operation control volume, by buss type
 		switch ( this->bussType )
 		{
 			case ElectricBussType::notYetSet :
@@ -1330,22 +1330,22 @@ namespace ElectricPowerService {
 			}
 			case ElectricBussType::aCBussStorage : {
 				this->storOpCVGenRate = this->genElectProdRate;
-				adjustedFeedInRequest = originalFeedInRequest;
 				break;
 			}
 			case ElectricBussType::dCBussInverterDCStorage : {
 				this->storOpCVGenRate = this->genElectProdRate;
-				adjustedFeedInRequest = originalFeedInRequest + this->inverterObj->getThermLossRate(); // add in inverter power conditioning losses
 				break;
 			}
 			case ElectricBussType::dCBussInverterACStorage : {
+				//TODO call inverter model here?
 				this->storOpCVGenRate = this->inverterObj->getACPowerOut();
-				adjustedFeedInRequest = originalFeedInRequest;
 				break;
 			}
 		} // end switch buss type
 
-
+		//2.  determine subpanel feed in and draw requests based on storage operation control scheme
+		Real64 subpanelFeedInRequest = 0.0;
+		Real64 subpanelDrawRequest   = 0.0;
 		switch ( this->storageScheme )
 		{
 			case StorageOpScheme::notYetSet : {
@@ -1353,12 +1353,93 @@ namespace ElectricPowerService {
 				break;
 			}
 			case StorageOpScheme::facilityDemandStoreExcessOnSite : {
+				subpanelFeedInRequest = originalFeedInRequest; //legacy behavior, storage dispatched to meet building load
+				subpanelDrawRequest  = 0.0;
+				break;
+			}
+			case StorageOpScheme::meterDemandStoreExcessOnSite : {
+				// Get meter rate
+				subpanelFeedInRequest = GetInstantMeterValue( this->trackStorageOpMeterIndex, 1 ) / DataGlobals::TimeStepZoneSec + GetInstantMeterValue( this->trackStorageOpMeterIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+				subpanelDrawRequest  = 0.0;
+				break;
+			}
+			case StorageOpScheme::chargeDischargeSchedules : {
+				// do not need to deal with subpanel rates here, charge or discharge is known from schedules and filled in below
+				break;
+			}
+			case StorageOpScheme::facilityDemandLeveling : {
+				Real64 demandTarget = this->facilityDemandTarget * ScheduleManager::GetCurrentScheduleValue( facilityDemandTargetModSchedIndex );
+				//compare target to 
+				Real64 deltaLoad = originalFeedInRequest - demandTarget;
+				if ( deltaLoad >= 0.0 ) {
+					//subpanel should feed main panel
+					subpanelFeedInRequest = deltaLoad;
+					subpanelDrawRequest   = 0.0;
+				} else { 
+					// subpanel should draw from main panel 
+					subpanelFeedInRequest = 0.0;
+					subpanelDrawRequest   = std::abs( deltaLoad );
+				}
+				break;
+			}
+		}
+
+		// 3. adjust feed in and draw rates from subpanel to storage operation control volume
+		Real64 adjustedFeedInRequest = 0.0; // account for any inverter or transformer losses
+		Real64 adjustedDrawRequest   = 0.0; // account for any converer or transformer losses
+
+		switch ( this->bussType )
+		{
+			case ElectricBussType::notYetSet :
+			case ElectricBussType::aCBuss : 
+			case ElectricBussType::dCBussInverter : {
+				// do nothing, no storage to manage
+				break;
+			}
+			case ElectricBussType::aCBussStorage :
+			case ElectricBussType::dCBussInverterACStorage : {
+				if ( this->transformerObj == nullptr ) {
+					adjustedFeedInRequest = subpanelFeedInRequest;
+					adjustedDrawRequest   = subpanelDrawRequest;
+				} else {
+					adjustedFeedInRequest = subpanelFeedInRequest + this->transformerObj->getLossRateForOutputPower( subpanelFeedInRequest );
+					adjustedDrawRequest   = subpanelDrawRequest - this->transformerObj->getLossRateForInputPower( subpanelDrawRequest );
+				}
+				break;
+			}
+			case ElectricBussType::dCBussInverterDCStorage : {
+				// can we get updated power conditioning losses here?
+				if ( this->transformerObj == nullptr ) {
+					adjustedFeedInRequest = subpanelFeedInRequest + this->inverterObj->getLossRateForOutputPower( subpanelFeedInRequest );
+					if ( this->converterObj == nullptr ) { // some operation schemes will never need a converter
+						adjustedDrawRequest   = subpanelDrawRequest;
+					} else {
+						adjustedDrawRequest   = subpanelDrawRequest - this->converterObj->getLossRateForInputPower( subpanelDrawRequest );
+					}
+				} else {
+					adjustedFeedInRequest = subpanelFeedInRequest + this->inverterObj->getLossRateForOutputPower( subpanelFeedInRequest ) + this->transformerObj->getLossRateForOutputPower( subpanelFeedInRequest );
+					if ( this->converterObj == nullptr ) {
+						adjustedDrawRequest   = subpanelDrawRequest - this->transformerObj->getLossRateForInputPower( subpanelDrawRequest );
+					} else {
+						adjustedDrawRequest   = subpanelDrawRequest - this->converterObj->getLossRateForInputPower( subpanelDrawRequest ) - this->transformerObj->getLossRateForInputPower( subpanelDrawRequest );
+					}
+				}
+				break;
+			}
+		} // end switch buss type
+
+		switch ( this->storageScheme )
+		{
+			case StorageOpScheme::notYetSet : {
+				// do nothing
+				break;
+			}
+			case StorageOpScheme::facilityDemandStoreExcessOnSite : // these are both the same because adjusted feed in request has already accounted for the difference
+			case StorageOpScheme::meterDemandStoreExcessOnSite :{
 				// this is the legacy behavior but with more limits from storage control operation information
 
 				// no draws from main panel
 				this->storOpCVDrawRate = 0.0;
-
-				// step 1 figure out what is desired of electrical storage system
 
 				if ( this->storOpCVGenRate < ( adjustedFeedInRequest ) ) {
 					//draw from storage
@@ -1382,69 +1463,128 @@ namespace ElectricPowerService {
 					this->storOpIsDischarging   = false;
 				}
 
-						//handle EMS overrides
-				if ( ( this->eMSOverridePelFromStorage ) && ( ! this->eMSOverridePelIntoStorage ) ) {
-					// EMS is calling for specific discharge rate
-					this->storOpCVDischargeRate = max( this->eMSValuePelFromStorage, 0.0 );
-					this->storOpCVChargeRate = 0.0;
-					storOpIsDischarging = true;
-					this->storOpIsCharging = false;
-				} else if ( ( ! this->eMSOverridePelFromStorage ) && ( this->eMSOverridePelIntoStorage ) ) {
-					// EMS is calling for specific charge rate
-					this->storOpCVChargeRate = max( this->eMSValuePelIntoStorage, 0.0 );
-					this->storOpCVDischargeRate = 0.0;
-					storOpIsDischarging = false;
+				break;
+			}
+
+			case StorageOpScheme::chargeDischargeSchedules : {
+				this->storOpCVChargeRate    = this->designStorageChargePower * ScheduleManager::GetCurrentScheduleValue( this->storageChargeModSchedIndex );
+				this->storOpCVDischargeRate = this->designStoragetDischargePower * ScheduleManager::GetCurrentScheduleValue( this->storageDischargeModSchedIndex );
+				Real64 genAndStorSum = this->storOpCVGenRate + this->storOpCVDischargeRate - this->storOpCVChargeRate;
+				if ( genAndStorSum >= 0.0 ) { // power to feed toward main panel
+					this->storOpCVDrawRate  = 0.0;
+					this->storOpCVFeedInRate = genAndStorSum;
+				} else { // shortfall, will need to draw from main panel (e.g. for grid charging)
+					this->storOpCVFeedInRate = 0.0;
+					this->storOpCVDrawRate   = std::abs( genAndStorSum );
+				}
+				if ( this->storOpCVChargeRate > 0.0 ) {
 					this->storOpIsCharging = true;
-				} else if ( ( this->eMSOverridePelFromStorage ) && ( this->eMSOverridePelIntoStorage ) ) {
-					// EMS is asking to override both
-					if ( this->eMSValuePelIntoStorage > this->eMSValuePelFromStorage ) {
-						this->storOpCVChargeRate = this->eMSValuePelIntoStorage - this->eMSValuePelFromStorage;
-						this->storOpCVDischargeRate = 0.0;
-						storOpIsDischarging = false;
-						this->storOpIsCharging = true;
-					} else if ( this->eMSValuePelIntoStorage < this->eMSValuePelFromStorage ) {
-						this->storOpCVDischargeRate = this->eMSValuePelFromStorage - this->eMSValuePelIntoStorage;
-						this->storOpCVChargeRate = 0.0;
-						storOpIsDischarging = true;
-						this->storOpIsCharging = false;
-					} else { //they equal just hold
-						this->storOpCVDischargeRate = 0.0;
-						this->storOpCVChargeRate = 0.0;
-						storOpIsDischarging = false;
-						this->storOpIsCharging = false;
-					}
+				} else {
+					this->storOpIsCharging = false;
+				}
+				if ( this->storOpCVDischargeRate > 0.0 ) {
+					this->storOpIsDischarging = true;
+				} else {
+					this->storOpIsDischarging = false;
 				}
 
-				//check against the controller limits
-				this->storOpCVChargeRate    = min( this->storOpCVChargeRate,    this->designStorageChargePower );
-				this->storOpCVDischargeRate = min( this->storOpCVDischargeRate, this->designStoragetDischargePower );
-
-
-				//check against what the device can really do, passing what controller wants for SOC limits
-				this->storageObj->checkDeviceConstraints( this->storOpCVChargeRate, this->storOpCVChargeRate,storOpIsCharging,storOpIsDischarging, this->maxStorageSOCFraction, this->minStorageSOCFraction );
-
-
-
-				break;
-			}
-			case StorageOpScheme::meterDemandStoreExcessOnSite : {
-				
-				// no draws from main panel
-				this->storOpCVDrawRate = 0.0;
-				break;
-			}
-			case StorageOpScheme::chargeDischargeSchedules : {
-			
 				break;
 			}
 			case StorageOpScheme::facilityDemandLeveling : {
+
+				if ( adjustedDrawRequest > 0.0 ) { // the only reason to draw instead of feed is to charge storage
+					this->storOpCVFeedInRate    = 0.0;
+					this->storOpCVDrawRate      = adjustedDrawRequest;
+					this->storOpCVChargeRate    = this->storOpCVDrawRate + this->storOpCVGenRate;
+					this->storOpCVDischargeRate = 0.0;
+					this->storOpIsCharging      = false;
+				}
+				if ( adjustedFeedInRequest > 0.0 ) {
+					this->storOpCVDrawRate      = 0.0;
+					this->storOpCVFeedInRate    = adjustedFeedInRequest;
+					if ( this->storOpCVGenRate < ( adjustedFeedInRequest ) ) {
+						//draw from storage
+						this->storOpCVDischargeRate = adjustedFeedInRequest - this->storOpCVGenRate;
+						this->storOpCVChargeRate    = 0.0;
+						this->storOpIsDischarging   = true;
+						this->storOpIsCharging      = false;
+
+					} else if ( this->storOpCVGenRate > ( adjustedFeedInRequest ) ) {
+						//add to storage
+						this->storOpCVDischargeRate = this->storOpCVGenRate - adjustedFeedInRequest;
+						this->storOpCVChargeRate    = 0.0;
+						this->storOpIsCharging      = true;
+						this->storOpIsDischarging   = false;
+
+					} else if ( this->storOpCVGenRate == ( adjustedFeedInRequest ) ) {
+						//do nothing
+						this->storOpCVDischargeRate = 0.0;
+						this->storOpCVChargeRate    = 0.0;
+						this->storOpIsCharging      = false;
+						this->storOpIsDischarging   = false;
+					}
+				}
 			
 				break;
 			}
 		}
 
+				//handle EMS overrides
+		if ( this->eMSOverridePelFromStorage || this->eMSOverridePelIntoStorage ) {
+			if ( ( this->eMSOverridePelFromStorage ) && ( ! this->eMSOverridePelIntoStorage ) ) {
+				// EMS is calling for specific discharge rate
+				this->storOpCVDischargeRate     = max( this->eMSValuePelFromStorage, 0.0 );
+				this->storOpCVChargeRate        = 0.0;
+				this->storOpIsDischarging       = true;
+				this->storOpIsCharging          = false;
+			} else if ( ( ! this->eMSOverridePelFromStorage ) && ( this->eMSOverridePelIntoStorage ) ) {
+				// EMS is calling for specific charge rate
+				this->storOpCVChargeRate        = max( this->eMSValuePelIntoStorage, 0.0 );
+				this->storOpCVDischargeRate     = 0.0;
+				this->storOpIsDischarging       = false;
+				this->storOpIsCharging          = true;
+			} else if ( ( this->eMSOverridePelFromStorage ) && ( this->eMSOverridePelIntoStorage ) ) {
+				// EMS is asking to override both
+				if ( this->eMSValuePelIntoStorage > this->eMSValuePelFromStorage ) {
+					this->storOpCVChargeRate    = this->eMSValuePelIntoStorage - this->eMSValuePelFromStorage;
+					this->storOpCVDischargeRate = 0.0;
+					this->storOpIsDischarging   = false;
+					this->storOpIsCharging      = true;
+				} else if ( this->eMSValuePelIntoStorage < this->eMSValuePelFromStorage ) {
+					this->storOpCVDischargeRate = this->eMSValuePelFromStorage - this->eMSValuePelIntoStorage;
+					this->storOpCVChargeRate    = 0.0;
+					this->storOpIsDischarging   = true;
+					this->storOpIsCharging      = false;
+				} else { //they equal just hold
+					this->storOpCVDischargeRate = 0.0;
+					this->storOpCVChargeRate    = 0.0;
+					this->storOpIsDischarging   = false;
+					this->storOpIsCharging      = false;
+				}
+			}
+
+		}
+
+		//check against the controller limits
+		this->storOpCVChargeRate    = min( this->storOpCVChargeRate,    this->designStorageChargePower );
+		this->storOpCVDischargeRate = min( this->storOpCVDischargeRate, this->designStoragetDischargePower );
+
+
+		//check against what the device can really do, passing what controller wants for SOC limits
+		this->storageObj->simulate( this->storOpCVChargeRate, this->storOpCVChargeRate,this->storOpIsCharging,this->storOpIsDischarging, this->maxStorageSOCFraction, this->minStorageSOCFraction );
+
+
 		//dispatch final request to storage device, calculate, update, and report storage device
 
+		// rebalance with final charge and discharge rates
+		Real64 genAndStorSum = this->storOpCVGenRate + this->storOpCVDischargeRate - this->storOpCVChargeRate;
+		if ( genAndStorSum >= 0.0 ) { // power to feed toward main panel
+			this->storOpCVDrawRate  = 0.0;
+			this->storOpCVFeedInRate = genAndStorSum;
+		} else { // shortfall, will need to draw from main panel (e.g. for grid charging)
+			this->storOpCVFeedInRate = 0.0;
+			this->storOpCVDrawRate   = std::abs( genAndStorSum );
+		}
 
 
 	}
@@ -2721,17 +2861,17 @@ namespace ElectricPowerService {
 			}
 
 			this->lastTimeStepStateOfCharge = this->thisTimeStepStateOfCharge;
-			this->lastTwoTimeStepAvailable = this->lastTimeStepAvailable;
-			this->lastTwoTimeStepBound = this->lastTimeStepBound;
-			this->lastTimeStepAvailable = this->thisTimeStepAvailable;
-			this->lastTimeStepBound = this->thisTimeStepBound;
-			this->timeElapsed = timeElapsed;
+			this->lastTwoTimeStepAvailable  = this->lastTimeStepAvailable;
+			this->lastTwoTimeStepBound      = this->lastTimeStepBound;
+			this->lastTimeStepAvailable     = this->thisTimeStepAvailable;
+			this->lastTimeStepBound         = this->thisTimeStepBound;
+			this->timeElapsed               = timeElapsed;
 
 		} // end if time changed
 	}
 
 	void
-	ElectricStorage::checkDeviceConstraints(
+	ElectricStorage::simulate(
 		Real64 & powerCharge,
 		Real64 & powerDischarge,
 		bool & charging,
@@ -2746,19 +2886,18 @@ namespace ElectricPowerService {
 			powerDischarge = 0.0;
 			charging = false;
 			powerCharge = 0.0;
-			return;
 		}
 
 		if ( this->storageModelMode == StorageModelType::simpleBucketStorage ) {
-			this->constrainSimpleBucketModel( powerCharge, powerDischarge, charging, discharging, controlSOCMaxFracLimit,controlSOCMinFracLimit );
+			this->simulateSimpleBucketModel( powerCharge, powerDischarge, charging, discharging, controlSOCMaxFracLimit,controlSOCMinFracLimit );
 		} else if ( this->storageModelMode == StorageModelType::kiBaMBattery ) {
-			this->constrainKineticBatteryModel(); //TODO 
+			this->simulateKineticBatteryModel(); //TODO 
 		}
 	
 	}
 
 	void
-	ElectricStorage::constrainSimpleBucketModel(
+	ElectricStorage::simulateSimpleBucketModel(
 		Real64 & powerCharge,
 		Real64 & powerDischarge,
 		bool & charging,
@@ -2800,11 +2939,51 @@ namespace ElectricPowerService {
 			if ( powerDischarge > this->maxPowerDraw ) {
 				powerDischarge = this->maxPowerDraw;
 			}
-			//now take energy from storage by drawing  (amplified by energetic effic)
+			//now check if will empty this timestep, power draw is amplified by energetic effic
 			if ( ( this->lastTimeStepStateOfCharge - powerDischarge * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour / this->energeticEfficDischarge ) <= ( this->maxEnergyCapacity * controlSOCMinFracLimit ) ) {
 				powerDischarge = ( this->lastTimeStepStateOfCharge - ( this->maxEnergyCapacity * controlSOCMinFracLimit ) ) * this->energeticEfficDischarge / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 			}
 		}
+
+		if ( ( ! charging ) && ( ! discharging ) ) {
+			this->thisTimeStepStateOfCharge = this->lastTimeStepStateOfCharge;
+			this->pelIntoStorage = 0.0;
+			this->pelFromStorage = 0.0;
+		}
+		if ( charging ) {
+			this->pelIntoStorage = powerCharge;
+			this->pelFromStorage = 0.0;
+			this->thisTimeStepStateOfCharge = this->lastTimeStepStateOfCharge + powerCharge * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour * this->energeticEfficCharge;
+		}
+		if ( discharging ) {
+			this->pelIntoStorage = 0.0;
+			this->pelFromStorage = powerDischarge;
+			this->thisTimeStepStateOfCharge = this->lastTimeStepStateOfCharge - powerDischarge * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour / this->energeticEfficDischarge;
+			this->thisTimeStepStateOfCharge = max( this->thisTimeStepStateOfCharge, 0.0 );
+		}
+
+		// updates and reports
+		this->electEnergyinStorage = this->thisTimeStepStateOfCharge;
+		this->storedPower          = this->pelIntoStorage;
+		this->storedEnergy         = this->pelIntoStorage * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+		this->decrementedEnergyStored = -1.0 * this->storedEnergy;
+		this->drawnPower           = this->pelFromStorage;
+		this->drawnEnergy          = this->pelFromStorage * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+		this->thermLossRate        = max( this->storedPower * ( 1.0 - this->energeticEfficCharge ), this->drawnPower * ( 1.0 - this->energeticEfficDischarge ) );
+		this->thermLossEnergy      = this->thermLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+		if ( this->zoneNum > 0 ) { // set values for zone heat gains
+			this->qdotConvZone = ( 1.0 - this->zoneRadFract ) * this->thermLossRate;
+			this->qdotRadZone  = ( this->zoneRadFract ) * this->thermLossRate;
+		}
+
+	}
+
+	void
+	ElectricStorage::simulateKineticBatteryModel()
+	{
+	//TODO
+
 	}
 
 	void
@@ -2927,38 +3106,6 @@ namespace ElectricPowerService {
 			drawing = false;
 		}
 
-		// EMS override -- intent to draw, charge or hold?
-		if ( ( this->eMSOverridePelFromStorage ) && ( ! this->eMSOverridePelIntoStorage ) ) {
-			// EMS is calling for specific discharge rate
-			tmpPdraw = max( this->eMSValuePelFromStorage, 0.0 );
-			tmpPcharge = 0.0;
-			drawing = true;
-			charging = false;
-		} else if ( ( ! this->eMSOverridePelFromStorage ) && ( this->eMSOverridePelIntoStorage ) ) {
-			// EMS is calling for specific charge rate
-			tmpPcharge = max( this->eMSValuePelIntoStorage, 0.0 );
-			tmpPdraw = 0.0;
-			drawing = false;
-			charging = true;
-		} else if ( ( this->eMSOverridePelFromStorage ) && ( this->eMSOverridePelIntoStorage ) ) {
-			// EMS is asking to override both
-			if ( this->eMSValuePelIntoStorage > this->eMSValuePelFromStorage ) {
-				tmpPcharge = this->eMSValuePelIntoStorage - this->eMSValuePelFromStorage;
-				tmpPdraw = 0.0;
-				drawing = false;
-				charging = true;
-			} else if ( this->eMSValuePelIntoStorage < this->eMSValuePelFromStorage ) {
-				tmpPdraw = this->eMSValuePelFromStorage - this->eMSValuePelIntoStorage;
-				tmpPcharge = 0.0;
-				drawing = true;
-				charging = false;
-			} else { //they equal just hold
-				tmpPdraw = 0.0;
-				tmpPcharge = 0.0;
-				drawing = false;
-				charging = false;
-			}
-		}
 
 		//*****************************************************************************************************************
 
@@ -3117,14 +3264,7 @@ namespace ElectricPowerService {
 
 		} //drawing
 
-		// correct if not available.
-		if ( ScheduleManager::GetCurrentScheduleValue( this->availSchedPtr ) == 0.0 ) {
-			if ( ( ! this->eMSOverridePelFromStorage ) && ( ! this->eMSOverridePelIntoStorage ) ) {
-				charging = false;
-				drawing = false;
-	//TODO this legacy looks wrong, separate for charging and discharging
-			}
-		}
+
 
 		if ( this->storageModelMode == StorageModelType::simpleBucketStorage ) {
 			if ( ( ! charging ) && ( ! drawing ) ) {

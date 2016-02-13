@@ -159,6 +159,11 @@ public: // Methods
 	getThermLossRate();
 
 	Real64
+	getLossRateForOutputPower(
+		Real64 const powerOutOfInverter
+	);
+
+	Real64
 	getACPowerOut();
 
 	Real64
@@ -281,6 +286,11 @@ public: // Methods
 
 	Real64 
 	getACPowerIn();
+
+	Real64
+	getLossRateForInputPower(
+		Real64 const powerIntoConverter //AC power going into inverter
+	);
 
 public: // data public for unit test
 	
@@ -419,7 +429,7 @@ public: //methods
 	timeCheckAndUpdate();
 
 	void
-	checkDeviceConstraints(
+	simulate(
 		Real64 & powerCharge,
 		Real64 & powerDischarge,
 		bool & charging,
@@ -485,7 +495,7 @@ public: //methods
 private: //methods
 
 	void
-	constrainSimpleBucketModel( // request charge discharge and 
+	simulateSimpleBucketModel( // request charge discharge and 
 		Real64 & powerCharge,
 		Real64 & powerDischarge,
 		bool & charging,
@@ -495,7 +505,7 @@ private: //methods
 	);
 
 	void
-	constrainKineticBatteryModel(
+	simulateKineticBatteryModel(
 	
 	);
 
@@ -684,6 +694,16 @@ public: //methods
 		std::string objectName
 	);
 
+	Real64
+	getLossRateForOutputPower(
+		Real64 const powerOutOfTransformer
+	);
+
+	Real64
+	getLossRateForInputPower(
+		Real64 const powerIntoTransformer
+	);
+
 	void
 	manageTransformers(
 		Real64 const surplusPowerOutFromLoadCenters
@@ -705,6 +725,7 @@ public: //methods
 
 	std::vector< int >
 	getLoadCenterObjIndices();
+
 
 
 private: //methods
