@@ -823,70 +823,28 @@ namespace ElectricPowerService {
 		} // if generators present
 
 		if ( this->bussType == ElectricBussType::dCBussInverter || this->bussType == ElectricBussType::dCBussInverterACStorage) {
-			this->inverterObj->manageInverter( this->genElectProdRate, 0.0 ); 
+			this->inverterObj->simulate( this->genElectProdRate ); 
 		}
 
 		if ( this->storagePresent ) {
 			this->storageObj->timeCheckAndUpdate();
 			this->dispatchStorage( this->subpanelFeedInRequest );
-
 		}
 
-
-		Real64 storageDrawnPower = 0.0;
-		Real64 storageStoredPower = 0.0;
-		if ( ( this->storagePresent ) && ( this->bussType == ElectricBussType::dCBussInverterDCStorage ) ) {
-			Real64 pcuLosses = 0.0;
-			if ( this->inverterPresent  ) {
-				// this will be lagged from last calc.
-				pcuLosses = this->inverterObj->getThermLossRate();
+		if ( this->bussType == ElectricBussType::dCBussInverterDCStorage ) {
+			if ( this->inverterObj != nullptr ) {
+				this->inverterObj->simulate( this->storOpCVFeedInRate );
 			}
-			Real64 powerDemand = this->totalPowerRequest + pcuLosses; 
-	//TODO this legacy may be wrong, double counting ancillaries maybe?
-
-			Real64 powerGenSupply = 0.0;
-			for ( auto loopGen = 0; loopGen < this->numGenerators; ++loopGen ) {
-				powerGenSupply += this->elecGenCntrlObj[ loopGen ]->dCElectProdRate;
-			}
-			this->storageObj->manageElectCenterStorageInteractions( powerDemand, powerGenSupply, storageDrawnPower, storageStoredPower );
-			//     Adjust whole building electric demand based on storage inputs and outputs
-			remainingWholePowerDemand = remainingWholePowerDemand - storageDrawnPower + storageStoredPower;
 		}
 
-		if ( this->inverterPresent ){
-			this->dCElectProdRate = 0.0;
-			for ( auto loopGen = 0; loopGen < this->numGenerators; ++loopGen ) {
-				this->dCElectProdRate += this->elecGenCntrlObj[ loopGen ]->dCElectProdRate;
-			}
-
-	//TODO should be		this->inverterObj->manageInverter( this->dCElectProdRate, storageDrawnPower - storageStoredPower ); found doing this seemed to double count power from inverter and storage discharge
-
-			this->inverterObj->manageInverter( this->dCElectProdRate, 0.0 ); //legacy I think is not right
+		if ( this->converterObj != nullptr ) {
+			this->converterObj->simulate( this->storOpCVDrawRate );
 		}
-		if ( ( this->storagePresent ) && ( ( this->bussType == ElectricBussType::dCBussInverterACStorage ) || ( this->bussType == ElectricBussType::aCBussStorage ) ) ) {
-			Real64 pcuLosses = 0.0;
-			if ( this->inverterPresent  ) {
-				// this will be lagged from last calc.
-				pcuLosses = this->inverterObj->getThermLossRate();
-			}
-			Real64 powerDemand = this->totalPowerRequest + pcuLosses; // this legacy may be wrong, double counting ancillaries maybe?
-			Real64 powerGenSupply = 0.0;
-			if ( this->bussType == ElectricBussType::aCBussStorage ) {
-				for ( auto loopGen = 0; loopGen < this->numGenerators; ++loopGen ) {
-					powerGenSupply += this->elecGenCntrlObj[ loopGen ]->electProdRate;
-				}
-			} else if ( this->bussType == ElectricBussType::dCBussInverterACStorage ) {
-				powerGenSupply = this->inverterObj->getACPowerOut();
-			}
-			Real64 storageDrawnPower = 0.0;
-			Real64 storageStoredPower = 0.0;
-			this->storageObj->manageElectCenterStorageInteractions( powerDemand, powerGenSupply, storageDrawnPower, storageStoredPower );
-			remainingWholePowerDemand = remainingWholePowerDemand - storageDrawnPower + storageStoredPower;
-		}
-
-
+		
 		this->updateLoadCenterRecords();
 		
+
+
 	}
 
 	void
@@ -1462,7 +1420,6 @@ namespace ElectricPowerService {
 					this->storOpIsCharging      = false;
 					this->storOpIsDischarging   = false;
 				}
-
 				break;
 			}
 
@@ -1487,7 +1444,6 @@ namespace ElectricPowerService {
 				} else {
 					this->storOpIsDischarging = false;
 				}
-
 				break;
 			}
 			case StorageOpScheme::facilityDemandLeveling : {
@@ -1524,7 +1480,6 @@ namespace ElectricPowerService {
 						this->storOpIsDischarging   = false;
 					}
 				}
-			
 				break;
 			}
 		}
@@ -1570,11 +1525,9 @@ namespace ElectricPowerService {
 		this->storOpCVDischargeRate = min( this->storOpCVDischargeRate, this->designStoragetDischargePower );
 
 
-		//check against what the device can really do, passing what controller wants for SOC limits
+		//dispatch final request to storage device, calculate, update, and report storage device, passing what controller wants for SOC limits
+
 		this->storageObj->simulate( this->storOpCVChargeRate, this->storOpCVChargeRate,this->storOpIsCharging,this->storOpIsDischarging, this->maxStorageSOCFraction, this->minStorageSOCFraction );
-
-
-		//dispatch final request to storage device, calculate, update, and report storage device
 
 		// rebalance with final charge and discharge rates
 		Real64 genAndStorSum = this->storOpCVGenRate + this->storOpCVDischargeRate - this->storOpCVChargeRate;
@@ -2181,21 +2134,29 @@ namespace ElectricPowerService {
 		return this->aCEnergyOut;
 	}
 
-	void
-	DCtoACInverter::manageInverter(
-		Real64 const powerDCElectProductionRate,
-		Real64 const powerDCElectNetStorageDrawRate
+	Real64
+	DCtoACInverter::getLossRateForOutputPower( 
+		Real64 const powerOutOfInverter
 	)
 	{
-		this->dCPowerIn = powerDCElectProductionRate + powerDCElectNetStorageDrawRate;
-		this->dCEnergyIn = this->dCPowerIn * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
-			// check availability schedule
-		if ( ScheduleManager::GetCurrentScheduleValue( this->availSchedPtr ) > 0.0 ) {
-			Real64 tempACPower = 0.0;
-			Real64 tmpEffic = 0.0;
-			// now calculate Inverter based on model type
-			switch ( this->modelType )
-			{
+
+	//need to invert, find a dCPowerIn that produces the desired AC power out
+	// use last efficiency for initial guess
+		this->dCPowerIn = powerOutOfInverter / this->efficiency;
+		this->calcEfficiency();
+		// one more update is close enough.
+		this->dCPowerIn = powerOutOfInverter / this->efficiency;
+		this->calcEfficiency();
+		return ( 1.0 - this->efficiency ) * this->dCPowerIn;
+
+	}
+
+	void
+	DCtoACInverter::calcEfficiency()
+	{
+
+		switch ( this->modelType )
+		{
 			case InverterModelType::cECLookUpTableModel: {
 				// we don't model voltage, so use nominal voltage
 				Real64 normalizedPower = this->dCPowerIn / this->ratedPower;
@@ -2203,70 +2164,75 @@ namespace ElectricPowerService {
 				// get efficiency
 				if ( normalizedPower <= 0.1 ) {
 					// extrapolate or fix at 10% value? fix it for now
-					tmpEffic = this->nomVoltEfficiencyARR[ 0 ];
+					this->efficiency = this->nomVoltEfficiencyARR[ 0 ];
 				} else if ( ( normalizedPower > 0.1 ) && ( normalizedPower < 0.20 ) ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 0 ] + ( ( normalizedPower - 0.1 ) / ( 0.2 - 0.1 ) ) * ( this->nomVoltEfficiencyARR[ 1 ] - this->nomVoltEfficiencyARR[ 0 ] );
+					this->efficiency = this->nomVoltEfficiencyARR[ 0 ] + ( ( normalizedPower - 0.1 ) / ( 0.2 - 0.1 ) ) * ( this->nomVoltEfficiencyARR[ 1 ] - this->nomVoltEfficiencyARR[ 0 ] );
 				} else if ( normalizedPower == 0.2 ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 1 ];
+					this->efficiency = this->nomVoltEfficiencyARR[ 1 ];
 				} else if ( ( normalizedPower > 0.2 ) && ( normalizedPower < 0.30 ) ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 1 ] + ( ( normalizedPower - 0.2 ) / ( 0.3 - 0.2 ) ) * ( this->nomVoltEfficiencyARR[ 2 ] - this->nomVoltEfficiencyARR[ 1 ] );
+					this->efficiency = this->nomVoltEfficiencyARR[ 1 ] + ( ( normalizedPower - 0.2 ) / ( 0.3 - 0.2 ) ) * ( this->nomVoltEfficiencyARR[ 2 ] - this->nomVoltEfficiencyARR[ 1 ] );
 				} else if ( normalizedPower == 0.3 ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 2 ];
+					this->efficiency = this->nomVoltEfficiencyARR[ 2 ];
 				} else if ( ( normalizedPower > 0.3 ) && ( normalizedPower < 0.50 ) ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 2 ] + ( ( normalizedPower - 0.3 ) / ( 0.5 - 0.3 ) ) * ( this->nomVoltEfficiencyARR[ 3 ] - this->nomVoltEfficiencyARR[ 2 ] );
+					this->efficiency = this->nomVoltEfficiencyARR[ 2 ] + ( ( normalizedPower - 0.3 ) / ( 0.5 - 0.3 ) ) * ( this->nomVoltEfficiencyARR[ 3 ] - this->nomVoltEfficiencyARR[ 2 ] );
 				} else if ( normalizedPower == 0.5 ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 3 ];
+					this->efficiency = this->nomVoltEfficiencyARR[ 3 ];
 				} else if ( ( normalizedPower > 0.5 ) && ( normalizedPower < 0.75 ) ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 3 ] + ( ( normalizedPower - 0.5 ) / ( 0.75 - 0.5 ) ) * ( this->nomVoltEfficiencyARR[ 4 ] - this->nomVoltEfficiencyARR[ 3 ] );
+					this->efficiency = this->nomVoltEfficiencyARR[ 3 ] + ( ( normalizedPower - 0.5 ) / ( 0.75 - 0.5 ) ) * ( this->nomVoltEfficiencyARR[ 4 ] - this->nomVoltEfficiencyARR[ 3 ] );
 				} else if ( normalizedPower == 0.75 ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 4 ];
+					this->efficiency = this->nomVoltEfficiencyARR[ 4 ];
 				} else if ( ( normalizedPower > 0.75 ) && ( normalizedPower < 1.0 ) ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 4 ] + ( ( normalizedPower - 0.75 ) / ( 1.0 - 0.75 ) ) * ( this->nomVoltEfficiencyARR[ 5 ] - this->nomVoltEfficiencyARR[ 4 ] );
+					this->efficiency = this->nomVoltEfficiencyARR[ 4 ] + ( ( normalizedPower - 0.75 ) / ( 1.0 - 0.75 ) ) * ( this->nomVoltEfficiencyARR[ 5 ] - this->nomVoltEfficiencyARR[ 4 ] );
 				} else if ( normalizedPower >= 1.0 ) {
-					tmpEffic = this->nomVoltEfficiencyARR[ 5 ];
+					this->efficiency = this->nomVoltEfficiencyARR[ 5 ];
 				} else {
 					assert( false );
 				}
 
-				this->efficiency = max( tmpEffic, 0.0 );
+				this->efficiency = max( this->efficiency, 0.0 );
 				this->efficiency = min( this->efficiency, 1.0 );
 
-				tempACPower = this->efficiency * this->dCPowerIn;
 				break;
 			}
 			case InverterModelType::curveFuncOfPower: {
+
 				Real64 normalizedPower = this->dCPowerIn / this->ratedPower;
 
-				tmpEffic = CurveManager::CurveValue( this->curveNum, normalizedPower );
+				this->efficiency = CurveManager::CurveValue( this->curveNum, normalizedPower );
 
-				this->efficiency = max( tmpEffic, this->minEfficiency );
+				this->efficiency = max( this->efficiency, this->minEfficiency );
 				this->efficiency = min( this->efficiency, this->maxEfficiency );
 
-				tempACPower = this->efficiency * this->dCPowerIn;
-				if ( tempACPower < this->minPower ) { // not enough to produce any AC power.  all lost. also standby mode
-					tempACPower = 0.0;
 
-				} else if ( tempACPower > this->maxPower ) { // too much DC for inverter to handle, excess is lost
-					tempACPower = this->maxPower;
-				}
 				break;
 			}
-			case InverterModelType::simpleConstantEff: {
-				tempACPower = this->efficiency * this->dCPowerIn;
-				break;
-			}
+			case InverterModelType::simpleConstantEff: 
 			case InverterModelType::notYetSet: {
 				// do nothing
-				tempACPower = 0.0;
+
 				break;
 			}
 
-			} // end switch
+		} // end switch
 
-			this->aCPowerOut = tempACPower;
-			this->aCEnergyOut = tempACPower * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+	}
 
-			if ( tempACPower == 0.0 ) {
+	void
+	DCtoACInverter::simulate(
+		Real64 const powerIntoInverter
+	)
+	{
+		this->dCPowerIn = powerIntoInverter;
+		this->dCEnergyIn = this->dCPowerIn * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+			// check availability schedule
+		if ( ScheduleManager::GetCurrentScheduleValue( this->availSchedPtr ) > 0.0 ) {
+
+			// now calculate Inverter based on model type
+			this->calcEfficiency();
+			this->aCPowerOut  = this->efficiency * this->dCPowerIn;
+			this->aCEnergyOut = this->aCPowerOut * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+
+			if ( this->aCPowerOut == 0.0 ) {
 				this->ancillACuseEnergy = this->standbyPower * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 				this->ancillACuseRate = this->standbyPower;
 			}
@@ -2279,10 +2245,10 @@ namespace ElectricPowerService {
 
 		}
 		//update report variables
-		this->thermLossRate = this->dCPowerIn - this->aCPowerOut + this->standbyPower;
+		this->thermLossRate    = this->dCPowerIn - this->aCPowerOut + this->standbyPower;
 		this->thermLossEnergy = this->thermLossRate * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
-		this->qdotConvZone = this->thermLossRate * ( 1.0 - this->zoneRadFract );
-		this->qdotRadZone = this->thermLossRate * this->zoneRadFract;
+		this->qdotConvZone    = this->thermLossRate * ( 1.0 - this->zoneRadFract );
+		this->qdotRadZone     = this->thermLossRate * this->zoneRadFract;
 	}
 
 	ACtoDCConverter::ACtoDCConverter(
@@ -2461,11 +2427,39 @@ namespace ElectricPowerService {
 		return this->aCPowerIn;
 	}
 
-	void ACtoDCConverter::manageConverter(
-	
+	Real64
+	ACtoDCConverter::getLossRateForInputPower(
+		Real64 const powerIntoConverter 
 	)
 	{
-	
+		this->aCPowerIn = powerIntoConverter;
+		this->calcEfficiency();
+		return ( 1.0 - this->efficiency ) * this->aCPowerIn;
+	}
+
+	void
+	ACtoDCConverter::calcEfficiency()
+	{
+		switch ( modelType ) 
+		{
+			case ConverterModelType::notYetSet : 
+			case ConverterModelType::simpleConstantEff : {
+				break;
+			}
+			case ConverterModelType::curveFuncOfPower : {
+				Real64 normalizedPower = this->aCPowerIn / this->maxPower;
+				this->efficiency = CurveManager::CurveValue( this->curveNum, normalizedPower );
+				break;
+			}
+		} // end switch
+	}
+
+	void
+	ACtoDCConverter::simulate(
+		Real64 const powerOutFromConverter
+	)
+	{
+		
 	
 	}
 

@@ -144,9 +144,8 @@ public: // Methods
 	);
 
 	void
-	manageInverter( 
-		Real64 const powerDCElectProductionRate,
-		Real64 const powerDCElectStorageDrawRate
+	simulate( 
+		Real64 const powerIntoInverter
 	); // Load Center number counter
 
 	void
@@ -171,6 +170,11 @@ public: // Methods
 
 
 private: //Methods
+
+	void
+	calcEfficiency();
+
+
 
 public: // data public for unit test
 		Real64 aCPowerOut;
@@ -265,8 +269,8 @@ public: // Methods
 	);
 
 	void
-	manageConverter( 
-
+	simulate(
+		Real64 const powerOutFromConverter
 	); // Load Center number counter
 
 	void
@@ -291,6 +295,11 @@ public: // Methods
 	getLossRateForInputPower(
 		Real64 const powerIntoConverter //AC power going into inverter
 	);
+
+private: //methods
+	
+	void
+	calcEfficiency();
 
 public: // data public for unit test
 	
