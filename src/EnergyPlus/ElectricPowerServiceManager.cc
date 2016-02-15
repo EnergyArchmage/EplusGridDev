@@ -154,6 +154,7 @@ namespace ElectricPowerService {
 		this->elecProducedPVRate = GetInstantMeterValue( this->elecProducedPVIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->elecProducedWTRate = GetInstantMeterValue( this->elecProducedWTIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->elecProducedStorageRate = GetInstantMeterValue( this->elecProducedStorageIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->elecProducedCoGenRate = GetInstantMeterValue( this->elecProducedCoGenIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 
 		this->wholeBldgRemainingLoad = this->totalElectricDemand;
 
@@ -184,6 +185,7 @@ namespace ElectricPowerService {
 			this->elecLoadCenterObjs[ loopElecLoadCenter ]->manageElecLoadCenter( firstHVACIteration, this->wholeBldgRemainingLoad );
 		}
 
+		this->updateWholeBuildingRecords();
 		// The transformer call should be put outside of the "Load Center" loop because
 		// 1) A transformer may be for utility, not for load center
 		// 2) A tansformer may be shared by multiple load centers
@@ -382,6 +384,7 @@ namespace ElectricPowerService {
 		this->elecProducedPVRate      = 0.0;
 		this->elecProducedWTRate      = 0.0;
 		this->elecProducedStorageRate = 0.0;
+		this->elecProducedCoGenRate   = 0.0;
 
 		if ( this->numLoadCenters > 0 ){
 			for( auto loopLoadCenters = 0; loopLoadCenters < this->numLoadCenters; ++loopLoadCenters ){
@@ -409,8 +412,23 @@ namespace ElectricPowerService {
 	void
 	ElectricPowerServiceManager::updateWholeBuildingRecords()
 	{
-		Real64 elecProducedCoGen = GetInstantMeterValue( this->elecProducedCoGenIndex, 2 );
-		this->electricityProd = elecProducedCoGen + ( this->elecProducedPVRate + this->elecProducedWTRate + this->elecProducedStorageRate ) * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour; //whole building
+
+		// main panel clearing house.
+
+		// where do subpanel draws come in? 
+		this->totalBldgElecDemand = GetInstantMeterValue( this->elecFacilityIndex, 1 ) / DataGlobals::TimeStepZoneSec;
+		this->totalHVACElecDemand = GetInstantMeterValue( this->elecFacilityIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->totalElectricDemand = this->totalBldgElecDemand + this->totalHVACElecDemand;
+		this->elecProducedPVRate = GetInstantMeterValue( this->elecProducedPVIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->elecProducedWTRate = GetInstantMeterValue( this->elecProducedWTIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->elecProducedStorageRate = GetInstantMeterValue( this->elecProducedStorageIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->elecProducedCoGenRate = GetInstantMeterValue( this->elecProducedCoGenIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+
+
+		this->electricityProd = ( this->elecProducedCoGenRate +  this->elecProducedPVRate + this->elecProducedWTRate + this->elecProducedStorageRate ) * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour; //whole building
+
+
+
 		this->electProdRate = this->electricityProd / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour ); //whole building
 
 		//Report the Total Electric Power Purchased [W], If negative then there is extra power to be sold or stored.
@@ -521,7 +539,10 @@ namespace ElectricPowerService {
 		this->storageDischargeModSchedIndex     = 0;
 		this->facilityDemandTarget              = 0.0;
 		this->facilityDemandTargetModSchedIndex = 0;
-
+		this->eMSOverridePelFromStorage         = false; // if true, EMS calling for override
+		this->eMSValuePelFromStorage            = 0.0; // value EMS is directing to use, power from storage [W]
+		this->eMSOverridePelIntoStorage         = false; // if true, EMS calling for override
+		this->eMSValuePelIntoStorage            = 0.0;// value EMS is directing to use, power into storage [W]
 
 		std::string const routineName = "ElectPowerLoadCenter constructor ";
 		int numAlphas; // Number of elements in the alpha array
@@ -839,6 +860,15 @@ namespace ElectricPowerService {
 
 		if ( this->converterObj != nullptr ) {
 			this->converterObj->simulate( this->storOpCVDrawRate );
+		}
+
+		if ( this->transformerObj != nullptr ) {
+			if ( this->storOpCVFeedInRate > 0.0 ) {
+				this->transformerObj->manageTransformers( this->storOpCVFeedInRate );
+			} else if ( this->storOpCVDrawRate > 0.0 ) {
+				this->transformerObj->manageTransformers( this->storOpCVDrawRate );
+			}
+			
 		}
 		
 		this->updateLoadCenterRecords();
@@ -1453,7 +1483,8 @@ namespace ElectricPowerService {
 					this->storOpCVDrawRate      = adjustedDrawRequest;
 					this->storOpCVChargeRate    = this->storOpCVDrawRate + this->storOpCVGenRate;
 					this->storOpCVDischargeRate = 0.0;
-					this->storOpIsCharging      = false;
+					this->storOpIsCharging      = true;
+					this->storOpIsDischarging   = false;
 				}
 				if ( adjustedFeedInRequest > 0.0 ) {
 					this->storOpCVDrawRate      = 0.0;
@@ -1467,8 +1498,8 @@ namespace ElectricPowerService {
 
 					} else if ( this->storOpCVGenRate > ( adjustedFeedInRequest ) ) {
 						//add to storage
-						this->storOpCVDischargeRate = this->storOpCVGenRate - adjustedFeedInRequest;
-						this->storOpCVChargeRate    = 0.0;
+						this->storOpCVDischargeRate = 0.0;
+						this->storOpCVChargeRate    = this->storOpCVGenRate - adjustedFeedInRequest; 
 						this->storOpIsCharging      = true;
 						this->storOpIsDischarging   = false;
 
@@ -1527,7 +1558,7 @@ namespace ElectricPowerService {
 
 		//dispatch final request to storage device, calculate, update, and report storage device, passing what controller wants for SOC limits
 
-		this->storageObj->simulate( this->storOpCVChargeRate, this->storOpCVChargeRate,this->storOpIsCharging,this->storOpIsDischarging, this->maxStorageSOCFraction, this->minStorageSOCFraction );
+		this->storageObj->simulate( this->storOpCVChargeRate, this->storOpCVDischargeRate,this->storOpIsCharging,this->storOpIsDischarging, this->maxStorageSOCFraction, this->minStorageSOCFraction );
 
 		// rebalance with final charge and discharge rates
 		Real64 genAndStorSum = this->storOpCVGenRate + this->storOpCVDischargeRate - this->storOpCVChargeRate;
@@ -1929,7 +1960,6 @@ namespace ElectricPowerService {
 		this->heatLossesDestination = ThermalLossDestination::heatLossNotDetermined;
 		this->zoneNum = 0;
 		this->zoneRadFract = 0.0;
-		this->nightTareLossPower = 0.0;
 		this->nominalVoltage = 0.0;
 		this->nomVoltEfficiencyARR.resize( 6, 0.0 );
 		this->curveNum = 0;
@@ -2022,7 +2052,7 @@ namespace ElectricPowerService {
 			case InverterModelType::cECLookUpTableModel: {
 				this->ratedPower                = DataIPShortCuts::rNumericArgs( 2 );
 				this->standbyPower              = DataIPShortCuts::rNumericArgs( 3 );
-				this->nightTareLossPower        = DataIPShortCuts::rNumericArgs( 3 );
+
 				this->nominalVoltage            = DataIPShortCuts::rNumericArgs( 4 );
 				this->nomVoltEfficiencyARR[ 0 ] = DataIPShortCuts::rNumericArgs( 5 );
 				this->nomVoltEfficiencyARR[ 1 ] = DataIPShortCuts::rNumericArgs( 6 );
@@ -2142,10 +2172,20 @@ namespace ElectricPowerService {
 
 	//need to invert, find a dCPowerIn that produces the desired AC power out
 	// use last efficiency for initial guess
-		this->dCPowerIn = powerOutOfInverter / this->efficiency;
+		if ( this->efficiency > 0.0 ) {
+			this->dCPowerIn = powerOutOfInverter / this->efficiency;		
+		} else {
+			this->dCPowerIn = powerOutOfInverter;
+			this->calcEfficiency();
+			this->dCPowerIn = powerOutOfInverter / this->efficiency;
+
+		}
+
 		this->calcEfficiency();
 		// one more update is close enough.
-		this->dCPowerIn = powerOutOfInverter / this->efficiency;
+		if ( this->efficiency > 0.0 ) {
+			this->dCPowerIn = powerOutOfInverter / this->efficiency;
+		}
 		this->calcEfficiency();
 		return ( 1.0 - this->efficiency ) * this->dCPowerIn;
 
@@ -2235,6 +2275,9 @@ namespace ElectricPowerService {
 			if ( this->aCPowerOut == 0.0 ) {
 				this->ancillACuseEnergy = this->standbyPower * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 				this->ancillACuseRate = this->standbyPower;
+			} else {
+				this->ancillACuseRate   = 0.0;
+				this->ancillACuseEnergy = 0.0;
 			}
 		} else { // not available per schedule, inverter is dead.
 			//  assume thermal shunt for DC in, but no standby electricity
@@ -2259,7 +2302,7 @@ namespace ElectricPowerService {
 		this->heatLossesDestination = ThermalLossDestination::heatLossNotDetermined;
 		this->zoneNum = 0;
 		this->zoneRadFract = 0.0;
-		this->nightTareLossPower = 0.0;
+		this->standbyPower = 0.0;
 
 		this->efficiency = 0.0;
 		this->aCPowerIn = 0.0;
@@ -2280,7 +2323,7 @@ namespace ElectricPowerService {
 		this->heatLossesDestination= ThermalLossDestination::heatLossNotDetermined;
 		this->zoneNum = 0;
 		this->zoneRadFract = 0.0;// radiative fraction for thermal losses to zone
-		this->nightTareLossPower = 0.0;
+		this->standbyPower = 0.0;
 		this->maxPower = 0.0;
 
 		std::string const routineName = "ACtoDCConverter constructor ";
@@ -2348,7 +2391,7 @@ namespace ElectricPowerService {
 			}
 			} // end switch
 
-			this->nightTareLossPower = DataIPShortCuts::rNumericArgs( 3 );
+			this->standbyPower = DataIPShortCuts::rNumericArgs( 3 );
 
 			this->zoneNum = InputProcessor::FindItemInList( DataIPShortCuts::cAlphaArgs( 5 ), DataHeatBalance::Zone );
 			if ( this->zoneNum > 0 ) this->heatLossesDestination = ThermalLossDestination::zoneGains;
@@ -2367,7 +2410,7 @@ namespace ElectricPowerService {
 
 			SetupOutputVariable( "Converter AC to DC Efficiency []", this->efficiency, "System", "Average", this->name );
 			SetupOutputVariable( "Converter AC Input Electric Power [W]", this->aCPowerIn, "System", "Average", this->name );
-			SetupOutputVariable( "Converter AC Input Electric Energy [J]", this->aCEnergyIn, "System", "Sum", this->name );
+			SetupOutputVariable( "Converter AC Input Electric Energy [J]", this->aCEnergyIn, "System", "Sum", this->name);
 			SetupOutputVariable( "Converter DC Output Electric Power [W]", this->dCPowerOut, "System", "Average", this->name );
 			SetupOutputVariable( "Converter DC Output Electric Energy [J]", this->dCEnergyOut, "System", "Sum", this->name );
 
@@ -2377,7 +2420,7 @@ namespace ElectricPowerService {
 			SetupOutputVariable( "Converter Thermal Loss Rate [W]", this->thermLossRate, "System", "Average", this->name );
 			SetupOutputVariable( "Converter Thermal Loss Energy [J]", this->thermLossEnergy, "System", "Sum", this->name );
 			SetupOutputVariable( "Converter Ancillary AC Electric Power [W]", this->ancillACuseRate, "System", "Average", this->name );
-			SetupOutputVariable( "Converter Ancillary AC Electric Energy [J]", this->ancillACuseEnergy, "System", "Sum", this->name, _, "Electricity", "Cogeneration", _, "Plant" ); // called cogeneration for end use table
+			SetupOutputVariable( "Converter Ancillary AC Electric Energy [J]", this->ancillACuseEnergy, "System", "Sum", this->name ,  _, "Electricity", "Cogeneration", _, "Plant" ); // called cogeneration for end use table
 			if ( this->zoneNum > 0 ) {
 					SetupZoneInternalGain( this->zoneNum, "ElectricLoadCenter:Storage:Converter", this->name, DataHeatBalance::IntGainTypeOf_ElectricLoadCenterConverter, this->qdotConvZone, _, this->qdotRadZone );
 			}
@@ -2459,7 +2502,46 @@ namespace ElectricPowerService {
 		Real64 const powerOutFromConverter
 	)
 	{
+		//need to invert, find an aCPowerIn that produces the desired DC power out  
+
+		// use last efficiency for initial guess
+		if ( ScheduleManager::GetCurrentScheduleValue( this->availSchedPtr ) > 0.0 ) {
 		
+			this->aCPowerIn = powerOutFromConverter / this->efficiency;
+			this->calcEfficiency(),
+			this->aCPowerIn = powerOutFromConverter / this->efficiency;
+			this->calcEfficiency(),
+
+			this->dCPowerOut = this->aCPowerIn  * this->efficiency;
+
+			if ( this->dCPowerOut == 0.0 ) {
+				this->ancillACuseEnergy = this->standbyPower * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+				this->ancillACuseRate = this->standbyPower;
+			} else {
+				this->ancillACuseRate   = 0.0;
+				this->ancillACuseEnergy = 0.0;
+			}
+		
+		} else { // not available
+			this->aCPowerIn = 0.0;
+			this->dCPowerOut = 0.0;
+			this->ancillACuseRate = 0.0;
+			this->ancillACuseEnergy = 0.0;
+		}
+
+
+
+		// update and report
+		this->aCEnergyIn  = this->aCPowerIn * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->dCEnergyOut = this->dCPowerOut * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->conversionLossPower = this->aCPowerIn - this->dCPowerOut;
+		this->conversionLossEnergy = this->conversionLossPower * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->thermLossRate    = this->aCPowerIn - this->dCPowerOut + this->ancillACuseRate;
+		this->thermLossEnergy = this->thermLossRate * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->qdotConvZone    = this->thermLossRate * ( 1.0 - this->zoneRadFract );
+		this->qdotRadZone     = this->thermLossRate * this->zoneRadFract;
+
+
 	
 	}
 
@@ -2885,8 +2967,9 @@ namespace ElectricPowerService {
 		if ( this->storageModelMode == StorageModelType::simpleBucketStorage ) {
 			this->simulateSimpleBucketModel( powerCharge, powerDischarge, charging, discharging, controlSOCMaxFracLimit,controlSOCMinFracLimit );
 		} else if ( this->storageModelMode == StorageModelType::kiBaMBattery ) {
-			this->simulateKineticBatteryModel(); //TODO 
+			this->simulateKineticBatteryModel( powerCharge, powerDischarge, charging, discharging, controlSOCMaxFracLimit,controlSOCMinFracLimit );
 		}
+
 	
 	}
 
@@ -2974,9 +3057,192 @@ namespace ElectricPowerService {
 	}
 
 	void
-	ElectricStorage::simulateKineticBatteryModel()
+	ElectricStorage::simulateKineticBatteryModel(
+		Real64 & powerCharge,
+		Real64 & powerDischarge,
+		bool & charging,
+		bool & discharging,
+		Real64 const controlSOCMaxFracLimit,
+		Real64 const controlSOCMinFracLimit
+	)
 	{
-	//TODO
+
+			//initialize locals
+
+		Real64 Pstorage = 0.0;
+		Real64 I0 = 0.0;
+		Real64 Volt = 0.0;
+
+		Real64 T0 = 0.0;
+		Real64 E0c = 0.0;
+		Real64 k = 0.0;
+		Real64 c = 0.0;
+		Real64 qmaxf = 0.0;
+		Real64 Ef = 0.0;
+		Real64 qmax = 0.0;
+		Real64 Pactual = 0.0;
+		Real64 q0 = 0.0;
+		Real64 E0d = 0.0;
+
+		qmax = this->maxAhCapacity;
+		E0c = this->chargedOCV;
+		E0d = this->dischargedOCV;
+		k = this->chargeConversionRate;
+		c = this->availableFrac;
+
+		if ( charging ) {
+
+			//*************************************************
+			//The sign of power and current is negative in charging
+			//*************************************************
+			Real64 Pw = -powerCharge / this->numBattery;
+			q0 = this->lastTimeStepAvailable + this->lastTimeStepBound;
+
+			I0 = 1.0; // Initial assumption
+			T0 = std::abs( qmax / I0 ); // Initial Assumption
+			qmaxf = qmax * k * c * T0 / ( 1.0 - std::exp( -k * T0 ) + c * ( k * T0 - 1.0 + std::exp( -k * T0 ) ) ); //Initial calculation of a function qmax(I)
+			Real64 Xf = q0 / qmaxf;
+			Ef = E0d + CurveManager::CurveValue( this->chargeCurveNum, Xf ); //E0d+Ac*Xf+Cc*Xf/(Dc-Xf) (use curve)
+			Volt = Ef - I0 * this->internalR;
+			Real64 Inew = Pw / Volt;
+			Real64 Tnew = qmaxf / std::abs( Inew );
+			Real64 error = 1.0;
+
+			while ( error > 0.0001 ) { //Iteration process to get converged current(I)
+				I0 = Inew;
+				T0 = Tnew;
+				qmaxf = qmax * k * c * T0 / ( 1.0 - std::exp( -k * T0 ) + c * ( k * T0 - 1.0 + std::exp( -k * T0 ) ) );
+				Xf = q0 / qmaxf;
+				Ef = E0d + CurveManager::CurveValue( this->chargeCurveNum, Xf ); //E0d+Ac*Xf+Cc*Xf/(Dc-Xf) (use curve)
+				Volt = Ef - I0 * this->internalR;
+				Inew = Pw / Volt;
+				Tnew = std::abs( qmaxf / Inew ); // ***Always positive here
+				error = std::abs( Inew - I0 );
+			}
+
+			Real64 dividend = -k * c * qmax + k * this->lastTimeStepAvailable * std::exp( -k * DataHVACGlobals::TimeStepSys ) + q0 * k * c * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) );
+			Real64 divisor = 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) + c * ( k * DataHVACGlobals::TimeStepSys - 1 + std::exp( -k * DataHVACGlobals::TimeStepSys ) );
+			Real64 Imax = dividend / divisor;
+			// Below: This is the limit of charging current from Charge Rate Limit (input)
+			Imax = max( Imax, - ( qmax - q0 ) * this->maxChargeRate );
+				
+			if ( std::abs( I0 ) <= std::abs( Imax ) ) {
+				I0 = Pw / Volt;
+				Pactual = I0 * Volt;
+			} else {
+				I0 = Imax;
+				qmaxf = 80.0; //Initial assumption to solve the equation using iterative method
+				error = 10.0; //Initial assumption ...
+				while ( error > 0.001 ) {
+					// *** I0(current) should be positive for this calculation
+					Real64 RHS = ( qmax * k * c * qmaxf / std::abs( I0 ) ) / ( 1.0 - std::exp( -k * qmaxf / std::abs( I0 ) ) + c * ( k * qmaxf / std::abs( I0 ) - 1.0 + std::exp( -k * qmaxf / std::abs( I0 ) ) ) );
+					error = std::abs( qmaxf - RHS );
+					qmaxf = RHS;
+				}
+			}
+		} 
+
+		if ( discharging ) {
+			//**********************************************
+			//The sign of power and current is positive in discharging
+			//**********************************************
+
+			Real64 Pw = powerDischarge / this->numBattery;
+			q0 = this->lastTimeStepAvailable + this->lastTimeStepBound;
+			bool const ok = this->determineCurrentForBatteryDischarge( I0, T0, Volt, Pw, q0, this->dischargeCurveNum, k, c, qmax, E0c, this->internalR );
+			if ( !ok ) {
+				ShowFatalError( "ElectricLoadCenter:Storage:Battery named=\"" + this->name + "\". Battery discharge current could not be estimated due to iteration limit reached. " );
+				//issue #5301, need more diagnostics for this. 
+			}
+
+			Real64 dividend = k * this->lastTimeStepAvailable * std::exp( -k * DataHVACGlobals::TimeStepSys ) + q0 * k * c * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) );
+			Real64 divisor = 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) + c * ( k * DataHVACGlobals::TimeStepSys - 1.0 + std::exp( -k * DataHVACGlobals::TimeStepSys ) );
+			Real64 Imax = dividend / divisor;
+			Imax = min( Imax, this->maxDischargeI );
+			if ( std::abs( I0 ) <= Imax ) {
+				I0 = Pw / Volt;
+				Pactual = I0 * Volt;
+			} else {
+				I0 = Imax;
+				qmaxf = 10.0; //Initial assumption to solve the equation using iterative method
+				Real64 error = 10.0; //Initial assumption ...
+				while ( error > 0.001 ) {
+					Real64 RHS = ( qmax * k * c * qmaxf / I0 ) / ( 1.0 - std::exp( -k * qmaxf / I0 ) + c * ( k * qmaxf / I0 - 1 + std::exp( -k * qmaxf / I0 ) ) );
+					error = std::abs( qmaxf - RHS );
+					qmaxf = RHS;
+				}
+				Real64 Xf = ( qmax - q0 ) / qmaxf;
+				Ef = E0c + CurveManager::CurveValue( this->dischargeCurveNum, Xf );
+				Volt = Ef - I0 * this->internalR;
+			}
+
+			if ( Volt < this->cutoffV ) {
+				I0 = 0.0;
+			}
+
+		} // if discharging
+
+		if ( ( ! charging ) && ( ! discharging ) ) {
+			this->thisTimeStepAvailable = this->lastTimeStepAvailable;
+			this->thisTimeStepBound = this->lastTimeStepBound;
+			I0 = 0.0;
+			Volt = 0.0;
+			q0 = this->lastTimeStepAvailable + this->lastTimeStepBound;
+		} else {
+			Real64 newAvailable = this->lastTimeStepAvailable * std::exp( -k * DataHVACGlobals::TimeStepSys ) + ( q0 * k * c - I0 ) * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k - I0 * c * ( k * DataHVACGlobals::TimeStepSys - 1.0 + std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k;
+			Real64 newBound = this->lastTimeStepBound * std::exp( -k * DataHVACGlobals::TimeStepSys ) + q0 * ( 1.0 - c ) * ( 1.0 - std::exp( -k * DataHVACGlobals::TimeStepSys ) ) - I0 * ( 1.0 - c ) * ( k * DataHVACGlobals::TimeStepSys - 1.0 + std::exp( -k * DataHVACGlobals::TimeStepSys ) ) / k;
+			this->thisTimeStepAvailable = max( 0.0, newAvailable );
+			this->thisTimeStepBound = max( 0.0, newBound );
+		}
+
+		Pactual = I0 * Volt;
+		Real64 TotalSOC = this->thisTimeStepAvailable + this->thisTimeStepBound;
+
+		//output1
+		if ( TotalSOC > q0 ) {
+			this->storageMode = 2;
+//TODO change sign convention here		this->storedPower = -1.0 * Volt * I0 * numbattery;
+//TODO change sign convention here				this->storedEnergy = -1.0 * Volt * I0 * numbattery * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+			this->storedPower = -1.0 *Volt * I0 * this->numBattery;
+			this->storedEnergy =  -1.0 *Volt * I0 * this->numBattery * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+// TODO, this next is a sign mistake in current dev, only mimic for no diff check in.
+//				this->decrementedEnergyStored = this->storedEnergy;  // should be this
+			this->decrementedEnergyStored = -1.0 * this->storedEnergy; // this is wrong
+			this->drawnPower = 0.0;
+			this->drawnEnergy = 0.0;
+
+		} else if ( TotalSOC < q0 ) {
+			this->storageMode = 1;
+			this->storedPower = 0.0;
+			this->storedEnergy = 0.0;
+			this->decrementedEnergyStored = 0.0;
+			this->drawnPower = Volt * I0 * this->numBattery;
+			this->drawnEnergy = Volt * I0 * this->numBattery * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+
+		} else {
+			this->storageMode = 0;
+			this->storedPower = 0.0;
+			this->storedEnergy = 0.0;
+			this->decrementedEnergyStored = 0.0;
+			this->drawnPower = 0.0;
+			this->drawnEnergy = 0.0;
+		}
+
+		this->absoluteSOC = TotalSOC * this->numBattery;
+		this->fractionSOC = TotalSOC / qmax;
+		this->batteryCurrent = I0 * this->parallelNum;
+		this->batteryVoltage = Volt * this->seriesNum;
+		this->thermLossRate = this->internalR * pow_2( I0 ) * this->numBattery;
+		this->thermLossEnergy = this->internalR * pow_2( I0 ) * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour * this->numBattery;
+
+		if ( this->zoneNum > 0 ) { // set values for zone heat gains
+			this->qdotConvZone = ( ( 1.0 - this->zoneRadFract ) * this->thermLossRate ) * this->numBattery;
+			this->qdotRadZone = ( ( this->zoneRadFract ) * this->thermLossRate ) * this->numBattery;
+		}
+
+		powerCharge = this->storedPower;
+		powerDischarge = this->drawnPower;
+
 
 	}
 
@@ -3425,18 +3691,36 @@ namespace ElectricPowerService {
 			curT0 = Tnew;
 			qmaxf = qmax * k * c * curT0 / ( 1.0 - std::exp( -k * curT0 ) + c * ( k * curT0 - 1.0 + std::exp( -k * curT0 ) ) );
 		//TODO add div by zero protection #5301
-			Xf = ( qmax - q0 ) / qmaxf;
+			if ( qmaxf != 0.0 ) {
+				Xf = ( qmax - q0 ) / qmaxf;
+			} else { 
+				Xf = 1.0;
+			} 
+
+			
 			Ef = E0c + CurveManager::CurveValue( CurveNum, Xf ); //E0c+Ad*Xf+Cd*X/(Dd-Xf)
 			curVolt = Ef - curI0 * InternalR;
 		//TODO add div by zero protection #5301
-			Inew = Pw / curVolt;
+			if ( curVolt != 0.0 ) {
+				Inew = Pw / curVolt;
+			} else {
+				Inew = 1.0;
+			}
+			
 		//TODO add div by zero protection #5301
-			Tnew = qmaxf / Inew;
+			if ( Inew != 0.0 ) {
+				Tnew = qmaxf / Inew;
+			} else {
+				Tnew = 1.0;
+			}
+			
 			error = std::abs( Inew - curI0 );
 			++countForIteration;
 			if ( countForIteration > 1000 ) {
 				exceedIterationLimit = true;
 				//Issue #5301 need more diagnostics for this case
+				ShowWarningError( "ElectricStorage::determineCurrentForBatteryDischarge, iteration limit exceeded  " );
+
 				break;
 			}
 		}
@@ -3647,7 +3931,7 @@ namespace ElectricPowerService {
 		this->thermalLossRate = 0.0;
 		this->thermalLossEnergy = 0.0;
 		this->elecUseUtility = 0.0;
-		this->elecProducedCoGen = 0.0;
+		this->elecUseOutToGrid = 0.0;
 		this->qdotConvZone = 0.0;
 		this->qdotRadZone = 0.0;
 				
@@ -3796,7 +4080,7 @@ namespace ElectricPowerService {
 			SetupOutputVariable( "Transformer Thermal Loss Rate [W]", this->thermalLossRate, "System", "Average", this->name );
 			SetupOutputVariable( "Transformer Thermal Loss Energy [J]", this->thermalLossEnergy, "System", "Sum", this->name );
 			SetupOutputVariable( "Transformer Distribution Electric Loss Energy [J]", this->elecUseUtility, "System", "Sum", this->name, _, "Electricity", "ExteriorEquipment", "Transformer", "System" );
-			SetupOutputVariable( "Transformer Cogeneration Electric Loss Energy [J]", this->elecProducedCoGen, "System", "Sum", this->name, _, "ElectricityProduced", "COGENERATION", _, "System" );
+			SetupOutputVariable( "Transformer Cogeneration Electric Loss Energy [J]", this->elecUseOutToGrid, "System", "Sum", this->name, _, "ElectricityProduced", "COGENERATION", _, "System" );
 
 			if ( this->zoneNum > 0 ) {
 				SetupZoneInternalGain( this->zoneNum, "ElectricLoadCenter:Transformer", this->name, DataHeatBalance::IntGainTypeOf_ElectricLoadCenterTransformer, this->qdotConvZone, _, this->qdotRadZone );
@@ -3826,6 +4110,27 @@ namespace ElectricPowerService {
 	{
 		return this->loadCenterObjIndexes;
 
+	}
+
+	Real64
+	ElectricTransformer::getLossRateForOutputPower(
+		Real64 const powerOutOfTransformer
+	) 
+	{
+		// TODO run model with power out level arg
+		// use lagged value for now
+		return this->totalLossRate;
+
+	}
+
+	Real64
+	ElectricTransformer::getLossRateForInputPower(
+		Real64 const powerIntoTransformer
+	)
+	{
+		// TODO run model with power in level arg
+		//use lagged value for now.
+		return this->totalLossRate;
 	}
 
 	void
@@ -3891,6 +4196,8 @@ namespace ElectricPowerService {
 		}
 		case TransformerUse::powerFromLoadCenterToBldg : {
 			//TODO, new configuration for transformer, really part of the specific load center and connects it to the main building bus
+			this->powerIn = surplusPowerOutFromLoadCenters;
+			elecLoad = surplusPowerOutFromLoadCenters;
 			break;
 		}
 		case TransformerUse::usenotYetSet : {
@@ -3902,8 +4209,8 @@ namespace ElectricPowerService {
 
 		// check availability schedule
 		if ( ScheduleManager::GetCurrentScheduleValue( this->availSchedPtr ) > 0.0 ) {
-			Real64 capacity = this->ratedCapacity;
-			Real64 pUL = elecLoad / capacity;
+
+			Real64 pUL = elecLoad / this->ratedCapacity;
 
 			if ( pUL > 1.0 ) {
 				pUL = 1.0;
@@ -3913,7 +4220,7 @@ namespace ElectricPowerService {
 			//found that ElecLoad obtained from GetInstantMeterVlaue() might refer to intermideiate values before
 			//convergence. The intermediate values may issue false warning. This the reason why PastElecLoad obtained
 			//by GetCurrentMeterValue() is used here to check overload issue.
-			if ( ( pastElecLoad / capacity ) > 1.0 ) {
+			if ( ( pastElecLoad / this->ratedCapacity ) > 1.0 ) {
 				if ( this->overloadErrorIndex == 0 ) {
 					ShowSevereError( "Transformer Overloaded" );
 					ShowContinueError( "Entered in ElectricLoadCenter:Transformer =" + this->name );
@@ -3942,35 +4249,35 @@ namespace ElectricPowerService {
 			this->noLoadLossRate = 0.0;
 		}
 
-		Real64 totalLossRate = this->loadLossRate + this->noLoadLossRate;
+		this->totalLossRate = this->loadLossRate + this->noLoadLossRate;
 
 		switch ( this->usageMode )
 		{
 		case TransformerUse::powerInFromGrid: {
-			this->powerIn = elecLoad + totalLossRate;
+			this->powerIn = elecLoad + this->totalLossRate;
 
 			//Transformer losses are wired to the meter via the variable "%ElecUseUtility" only if transformer losses
 			//are considered in utility cost. If transformer losses are not considered in utility cost, 0 is assigned
 			//to the variable "%ElecUseUtility".
 			if ( this->considerLosses ) {
-				this->elecUseUtility = totalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+				this->elecUseUtility = this->totalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
 			} else {
 				this->elecUseUtility = 0.0;
 			}
 
 			//Transformer has two modes.If it works in one mode, the variable for meter output in the other mode
 			//is assigned 0
-			this->elecProducedCoGen = 0.0;
+			this->elecUseOutToGrid = 0.0;
 
 			break;
 		}
 
 		case TransformerUse::powerOutFromBldgToGrid: {
-			this->powerOut = elecLoad - totalLossRate;
+			this->powerOut = elecLoad - this->totalLossRate;
 
 			if ( this->powerOut < 0 ) this->powerOut = 0.0;
 
-			this->elecProducedCoGen = -1.0 * totalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+			this->elecUseOutToGrid = -1.0 * this->totalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
 
 			//Transformer has two modes.If it works in one mode, the variable for meter output in the other mode
 			//is assigned 0
@@ -3979,6 +4286,8 @@ namespace ElectricPowerService {
 		}
 		case TransformerUse::powerFromLoadCenterToBldg : {
 			//TODO, new configuration for transformer, really part of the specific load center and connects it to the main building bus
+
+
 			break;
 		}
 		case TransformerUse::usenotYetSet : {
@@ -4001,7 +4310,7 @@ namespace ElectricPowerService {
 		//   Thermal loss rate may not be equal to Total loss rate. This is the case when surplus power is less than the
 		//    calculated total loss rate for a cogeneration transformer. That is why "PowerIn - PowerOut" is used below.
 		this->thermalLossRate = this->powerIn - this->powerOut;
-		this->thermalLossEnergy = totalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
+		this->thermalLossEnergy = this->thermalLossRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour;
 
 		if ( this->zoneNum > 0 ) { // set values for zone heat gains
 			this->qdotConvZone = ( 1.0 - this->zoneRadFrac ) * this->thermalLossRate;
@@ -4044,7 +4353,7 @@ namespace ElectricPowerService {
 		this->thermalLossRate   = 0.0;
 		this->thermalLossEnergy = 0.0;
 		this->elecUseUtility    = 0.0;
-		this->elecProducedCoGen = 0.0;
+		this->elecUseOutToGrid  = 0.0;
 		this->qdotConvZone      = 0.0;
 		this->qdotRadZone       = 0.0;
 	}

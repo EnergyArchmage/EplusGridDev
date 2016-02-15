@@ -111,7 +111,6 @@ private: // Creation
 			heatLossesDestination( ThermalLossDestination::heatLossNotDetermined ),
 			zoneNum( 0 ),
 			zoneRadFract( 0.0 ),
-			nightTareLossPower( 0.0 ),
 			nominalVoltage( 0.0 ),
 			nomVoltEfficiencyARR( 6, 0.0 ),
 			curveNum( 0 ),
@@ -204,7 +203,6 @@ private: // data
 		ThermalLossDestination heatLossesDestination;
 		int zoneNum; // destination zone for heat losses from inverter.
 		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
-		Real64 nightTareLossPower; // CEC lookup table model
 		Real64 nominalVoltage; // CEC lookup table model
 		std::vector < Real64 > nomVoltEfficiencyARR; // eff at 10, 20, 30, 50, 75, & 100% CEC lookup table model
 		int curveNum; // curve index for eff as func of power
@@ -244,7 +242,7 @@ private: // creation
 		heatLossesDestination( ThermalLossDestination::heatLossNotDetermined ),
 		zoneNum( 0 ),
 		zoneRadFract( 0.0 ), // radiative fraction for thermal losses to zone
-		nightTareLossPower( 0.0 ), 
+		standbyPower( 0.0 ), 
 		maxPower( 0.0 )
 	{}
 
@@ -332,7 +330,7 @@ private: // data
 		ThermalLossDestination heatLossesDestination;
 		int zoneNum; // destination zone for heat losses from inverter.
 		Real64 zoneRadFract; // radiative fraction for thermal losses to zone
-		Real64 nightTareLossPower; 
+		Real64 standbyPower; 
 		Real64 maxPower;
 
 };
@@ -515,7 +513,12 @@ private: //methods
 
 	void
 	simulateKineticBatteryModel(
-	
+		Real64 & powerCharge,
+		Real64 & powerDischarge,
+		bool & charging,
+		bool & discharging,
+		Real64 const controlSOCMaxFracLimit,
+		Real64 const controlSOCMinFracLimit
 	);
 
 	void
@@ -677,7 +680,7 @@ private: // Creation
 			thermalLossRate( 0.0 ),
 			thermalLossEnergy( 0.0 ),
 			elecUseUtility( 0.0 ),
-			elecProducedCoGen( 0.0 ),
+			elecUseOutToGrid( 0.0 ),
 			qdotConvZone( 0.0 ),
 			qdotRadZone( 0.0 )
 		{}
@@ -796,11 +799,13 @@ private: //data
 	Real64 noLoadLossEnergy; // [J]
 	Real64 loadLossRate; // [W]
 	Real64 loadLossEnergy; // [J]
+	Real64 totalLossRate;
+
 	Real64 thermalLossRate; // [W]
 	Real64 thermalLossEnergy; // [J]
 	Real64 elecUseUtility; // [J] Energy consumption for a utility transformer (power in)
 	// Positive values
-	Real64 elecProducedCoGen; // [J] Energy consumption for a cogeneration transformer (power out)
+	Real64 elecUseOutToGrid; // [J] Energy consumption for a (cogeneration )transformer (power out from building to grid)
 	// Negative values
 	Real64 qdotConvZone; // [W]
 	Real64 qdotRadZone; // [W]
@@ -977,8 +982,11 @@ private: // Creation
 		storageChargeModSchedIndex( 0 ),
 		storageDischargeModSchedIndex( 0 ),
 		facilityDemandTarget( 0.0 ),
-		facilityDemandTargetModSchedIndex( 0 )
-
+		facilityDemandTargetModSchedIndex( 0 ),
+		eMSOverridePelFromStorage( false ), // if true, EMS calling for override
+		eMSValuePelFromStorage( 0.0 ), // value EMS is directing to use, power from storage [W]
+		eMSOverridePelIntoStorage( false ), // if true, EMS calling for override
+		eMSValuePelIntoStorage ( 0.0 ) // value EMS is directing to use, power into storage [W]
 	{}
 
 	// Copy Constructor
@@ -1196,7 +1204,8 @@ public: // Creation
 			totalElectricDemand( 0.0 ),
 			elecProducedPVRate( 0.0 ),
 			elecProducedWTRate( 0.0 ),
-			elecProducedStorageRate( 0.0 )
+			elecProducedStorageRate( 0.0 ),
+			elecProducedCoGenRate( 0.0 )
 		{}
 	// Copy Constructor
 	ElectricPowerServiceManager( ElectricPowerServiceManager const & ) = default;
@@ -1285,6 +1294,7 @@ private: // data
 	Real64 elecProducedPVRate; // Current Rate of PV Produced from the Arrays (W)
 	Real64 elecProducedWTRate; // Current Rate of Wind Turbine Produced (W)
 	Real64 elecProducedStorageRate; // Current Rate of power to(-)/from(+) storage
+	Real64 elecProducedCoGenRate; // Current Rate of Cogeneration generators produced ( W )
 
 	Real64 pvTotalCapacity; // for LEED report, total installed PV capacity
 	Real64 windTotalCapacity; // for LEED report, total installed wind capacity
