@@ -93,35 +93,38 @@ class DCtoACInverter
 {
 private: // Creation
 	// Default Constructor
-		DCtoACInverter() :
-			aCPowerOut( 0.0 ),
-			aCEnergyOut( 0.0 ),
-			efficiency( 0.0 ),
-			dCPowerIn( 0.0 ),
-			dCEnergyIn( 0.0 ),
-			thermLossRate( 0.0 ),
-			thermLossEnergy( 0.0 ),
-			qdotConvZone( 0.0 ),
-			qdotRadZone( 0.0 ),
-			ancillACuseRate( 0.0 ),
-			ancillACuseEnergy( 0.0 ),
-			name( ""),
-			modelType( InverterModelType::notYetSet ),
-			availSchedPtr( 0 ),
-			heatLossesDestination( ThermalLossDestination::heatLossNotDetermined ),
-			zoneNum( 0 ),
-			zoneRadFract( 0.0 ),
-			nominalVoltage( 0.0 ),
-			nomVoltEfficiencyARR( 6, 0.0 ),
-			curveNum( 0 ),
-			ratedPower( 0.0 ),
-			minPower( 0.0 ),
-			maxPower( 0.0 ),
-			minEfficiency( 0.0 ),
-			maxEfficiency( 0.0 ),
-			standbyPower( 0.0 )
+	DCtoACInverter() :
+		aCPowerOut( 0.0 ),
+		aCEnergyOut( 0.0 ),
+		efficiency( 0.0 ),
+		dCPowerIn( 0.0 ),
+		dCEnergyIn( 0.0 ),
+		conversionLossPower( 0.0 ),
+		conversionLossEnergy( 0.0 ),
+		conversionLossEnergyDecrement( 0.0 ),
+		thermLossRate( 0.0 ),
+		thermLossEnergy( 0.0 ),
+		qdotConvZone( 0.0 ),
+		qdotRadZone( 0.0 ),
+		ancillACuseRate( 0.0 ),
+		ancillACuseEnergy( 0.0 ),
+		name( ""),
+		modelType( InverterModelType::notYetSet ),
+		availSchedPtr( 0 ),
+		heatLossesDestination( ThermalLossDestination::heatLossNotDetermined ),
+		zoneNum( 0 ),
+		zoneRadFract( 0.0 ),
+		nominalVoltage( 0.0 ),
+		nomVoltEfficiencyARR( 6, 0.0 ),
+		curveNum( 0 ),
+		ratedPower( 0.0 ),
+		minPower( 0.0 ),
+		maxPower( 0.0 ),
+		minEfficiency( 0.0 ),
+		maxEfficiency( 0.0 ),
+		standbyPower( 0.0 )
 
-		{}
+	{}
 
 	// Copy Constructor
 	DCtoACInverter( DCtoACInverter const & ) = default;
@@ -182,6 +185,9 @@ public: // data public for unit test
 		Real64 efficiency;
 		Real64 dCPowerIn;
 		Real64 dCEnergyIn;
+		Real64 conversionLossPower;
+		Real64 conversionLossEnergy;
+		Real64 conversionLossEnergyDecrement;
 		Real64 thermLossRate;
 		Real64 thermLossEnergy;
 		Real64 qdotConvZone;
@@ -230,6 +236,7 @@ private: // creation
 		dCEnergyOut( 0.0 ),
 		conversionLossPower( 0.0 ),
 		conversionLossEnergy( 0.0 ),
+		conversionLossEnergyDecrement( 0.0 ),
 		thermLossRate( 0.0 ),
 		thermLossEnergy( 0.0 ),
 		qdotConvZone( 0.0 ),
@@ -308,7 +315,7 @@ public: // data public for unit test
 		Real64 dCEnergyOut;
 		Real64 conversionLossPower;
 		Real64 conversionLossEnergy;
-
+		Real64 conversionLossEnergyDecrement;
 		Real64 thermLossRate;
 		Real64 thermLossEnergy;
 		Real64 qdotConvZone;
@@ -1186,6 +1193,7 @@ public: // Creation
 			elecProducedPVIndex( 0 ),
 			elecProducedWTIndex( 0 ),
 			elecProducedStorageIndex( 0 ),
+			elecProducedPowerConversionIndex( 0 ),
 			name( "Whole Building" ),
 			facilityPowerInTransformerPresent( false ),
 			facilityPowerInTransformerName( "" ),
@@ -1205,7 +1213,9 @@ public: // Creation
 			elecProducedPVRate( 0.0 ),
 			elecProducedWTRate( 0.0 ),
 			elecProducedStorageRate( 0.0 ),
+			elecProducedPowerConversionRate( 0.0 ),
 			elecProducedCoGenRate( 0.0 )
+
 		{}
 	// Copy Constructor
 	ElectricPowerServiceManager( ElectricPowerServiceManager const & ) = default;
@@ -1270,6 +1280,7 @@ private: // data
 	int elecProducedPVIndex;
 	int elecProducedWTIndex;
 	int elecProducedStorageIndex;
+	int elecProducedPowerConversionIndex;
 	std::string name;
 
 	bool facilityPowerInTransformerPresent;
@@ -1294,6 +1305,7 @@ private: // data
 	Real64 elecProducedPVRate; // Current Rate of PV Produced from the Arrays (W)
 	Real64 elecProducedWTRate; // Current Rate of Wind Turbine Produced (W)
 	Real64 elecProducedStorageRate; // Current Rate of power to(-)/from(+) storage
+	Real64 elecProducedPowerConversionRate; // Current rate of power loss from power conversion, negative (W)
 	Real64 elecProducedCoGenRate; // Current Rate of Cogeneration generators produced ( W )
 
 	Real64 pvTotalCapacity; // for LEED report, total installed PV capacity

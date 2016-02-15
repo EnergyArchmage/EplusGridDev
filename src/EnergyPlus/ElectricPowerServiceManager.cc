@@ -152,6 +152,8 @@ namespace EnergyPlus {
 		this->elecProducedWTRate = GetInstantMeterValue( this->elecProducedWTIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->elecProducedStorageRate = GetInstantMeterValue( this->elecProducedStorageIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->elecProducedCoGenRate = GetInstantMeterValue( this->elecProducedCoGenIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->elecProducedPowerConversionRate = GetInstantMeterValue( this->elecProducedPowerConversionIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+
 
 		this->wholeBldgRemainingLoad = this->totalElectricDemand;
 
@@ -351,6 +353,7 @@ namespace EnergyPlus {
 		this->elecProducedPVIndex      = EnergyPlus::GetMeterIndex( "Photovoltaic:ElectricityProduced" );
 		this->elecProducedWTIndex      = EnergyPlus::GetMeterIndex( "WindTurbine:ElectricityProduced" );
 		this->elecProducedStorageIndex = EnergyPlus::GetMeterIndex( "ElectricStorage:ElectricityProduced" );
+		this->elecProducedPowerConversionIndex =  EnergyPlus::GetMeterIndex( "PowerConversion:ElectricityProduced" );
 
 		if ( this->numLoadCenters > 0 ){
 			for( auto loopLoadCenters = 0; loopLoadCenters < this->numLoadCenters; ++loopLoadCenters ){
@@ -420,13 +423,12 @@ namespace EnergyPlus {
 		this->elecProducedWTRate = GetInstantMeterValue( this->elecProducedWTIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->elecProducedStorageRate = GetInstantMeterValue( this->elecProducedStorageIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->elecProducedCoGenRate = GetInstantMeterValue( this->elecProducedCoGenIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->elecProducedPowerConversionRate = GetInstantMeterValue( this->elecProducedPowerConversionIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 
+		this->electProdRate = this->elecProducedCoGenRate +  this->elecProducedPVRate + this->elecProducedWTRate + this->elecProducedStorageRate + this->elecProducedPowerConversionRate;
 
-		this->electricityProd = ( this->elecProducedCoGenRate +  this->elecProducedPVRate + this->elecProducedWTRate + this->elecProducedStorageRate ) * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour; //whole building
+		this->electricityProd = this->electProdRate * DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour; //whole building
 
-
-
-		this->electProdRate = this->electricityProd / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour ); //whole building
 
 		//Report the Total Electric Power Purchased [W], If negative then there is extra power to be sold or stored.
 		this->electPurchRate = this->totalElectricDemand - this->electProdRate;
@@ -1971,6 +1973,9 @@ namespace EnergyPlus {
 		this->aCPowerOut = 0.0;
 		this->dCEnergyIn = 0.0;
 		this->aCEnergyOut = 0.0;
+		this->conversionLossPower = 0.0;
+		this->conversionLossEnergy = 0.0;
+		this->conversionLossEnergyDecrement = 0.0;
 		this->thermLossRate = 0.0;
 		this->thermLossEnergy = 0.0;
 		this->qdotConvZone = 0.0;
@@ -2091,7 +2096,10 @@ namespace EnergyPlus {
 			SetupOutputVariable( "Inverter DC Input Electric Power [W]", this->dCPowerIn, "System", "Average", this->name );
 			SetupOutputVariable( "Inverter DC Input Electric Energy [J]", this->dCEnergyIn, "System", "Sum", this->name );
 			SetupOutputVariable( "Inverter AC Output Electric Power [W]", this->aCPowerOut, "System", "Average", this->name );
-			SetupOutputVariable( "Inverter AC Output Electric Energy [J]", this->aCEnergyOut, "System", "Sum", this->name, _, "ElectricityProduced", "Photovoltaics", _, "Plant" ); // right now PV is the only DC source
+			SetupOutputVariable( "Inverter AC Output Electric Energy [J]", this->aCEnergyOut, "System", "Sum", this->name ); 
+			SetupOutputVariable( "Inverter Conversion Loss Power [W]", this->conversionLossPower, "System", "Average", this->name );
+			SetupOutputVariable( "Inverter Conversion Loss Energy [J]", this->conversionLossEnergy, "System", "Sum", this->name );
+			SetupOutputVariable( "Inverter Conversion Loss Decrement Energy [J]", this->conversionLossEnergyDecrement, "System", "Sum", this->name, _, "ElectricityProduced", "PowerConversion", _, "Plant" );
 			SetupOutputVariable( "Inverter Thermal Loss Rate [W]", this->thermLossRate, "System", "Average", this->name );
 			SetupOutputVariable( "Inverter Thermal Loss Energy [J]", this->thermLossEnergy, "System", "Sum", this->name );
 			SetupOutputVariable( "Inverter Ancillary AC Electric Power [W]", this->ancillACuseRate, "System", "Average", this->name );
@@ -2285,6 +2293,9 @@ namespace EnergyPlus {
 
 		}
 		//update report variables
+		this->conversionLossPower = this->dCPowerIn - this->aCPowerOut;
+		this->conversionLossEnergy = this->conversionLossPower * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->conversionLossEnergyDecrement = -1.0 * this->conversionLossEnergy;
 		this->thermLossRate    = this->dCPowerIn - this->aCPowerOut + this->standbyPower;
 		this->thermLossEnergy = this->thermLossRate * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->qdotConvZone    = this->thermLossRate * ( 1.0 - this->zoneRadFract );
@@ -2308,6 +2319,7 @@ namespace EnergyPlus {
 		this->dCEnergyOut = 0.0;
 		this->conversionLossPower = 0.0;
 		this->conversionLossEnergy = 0.0;
+		this->conversionLossEnergyDecrement = 0.0;
 		this->thermLossRate = 0.0;
 		this->thermLossEnergy = 0.0;
 		this->qdotConvZone = 0.0;
@@ -2412,8 +2424,8 @@ namespace EnergyPlus {
 			SetupOutputVariable( "Converter DC Output Electric Energy [J]", this->dCEnergyOut, "System", "Sum", this->name );
 
 			SetupOutputVariable( "Converter Electric Loss Power [W]", this->conversionLossPower, "System", "Average", this->name );
-			SetupOutputVariable( "Converter Electric Loss Energy [J]", this->conversionLossEnergy, "System", "Sum", this->name, _, "Electricity", "Cogeneration", _, "Plant" );
-
+			SetupOutputVariable( "Converter Electric Loss Energy [J]", this->conversionLossEnergy, "System", "Sum", this->name);
+			SetupOutputVariable( "Converter Electric Loss Decrement Energy [J]", this->conversionLossEnergyDecrement, "System", "Sum", this->name, _, "ElectricityProduced", "PowerConversion", _, "Plant" );
 			SetupOutputVariable( "Converter Thermal Loss Rate [W]", this->thermLossRate, "System", "Average", this->name );
 			SetupOutputVariable( "Converter Thermal Loss Energy [J]", this->thermLossEnergy, "System", "Sum", this->name );
 			SetupOutputVariable( "Converter Ancillary AC Electric Power [W]", this->ancillACuseRate, "System", "Average", this->name );
@@ -2533,6 +2545,7 @@ namespace EnergyPlus {
 		this->dCEnergyOut = this->dCPowerOut * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->conversionLossPower = this->aCPowerIn - this->dCPowerOut;
 		this->conversionLossEnergy = this->conversionLossPower * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
+		this->conversionLossEnergyDecrement = -1.0 * this->conversionLossEnergy;
 		this->thermLossRate    = this->aCPowerIn - this->dCPowerOut + this->ancillACuseRate;
 		this->thermLossEnergy = this->thermLossRate * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->qdotConvZone    = this->thermLossRate * ( 1.0 - this->zoneRadFract );
