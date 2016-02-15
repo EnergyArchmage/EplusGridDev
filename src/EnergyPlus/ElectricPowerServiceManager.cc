@@ -93,13 +93,10 @@
 namespace EnergyPlus {
 
 
-
-namespace ElectricPowerService {
-
-	std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
+	std::unique_ptr< ElectricPowerServiceManager > facilityElectricServiceObj;
 
 	void
-	clear_state()
+	clearFacilityElectricPowerServiceObject()
 	{
 		facilityElectricServiceObj.release();
 	}
@@ -4365,6 +4362,6 @@ namespace ElectricPowerService {
 		this->qdotRadZone       = 0.0;
 	}
 
-} // ElectricPowerService namespace
+
 
 } // EnergyPlus namespace

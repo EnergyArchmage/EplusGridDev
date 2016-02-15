@@ -76,7 +76,7 @@
 
 namespace EnergyPlus {
 
-namespace ElectricPowerService {
+
 
 	enum class ThermalLossDestination : int {
 		heatLossNotDetermined = 0,
@@ -1301,15 +1301,15 @@ private: // data
 
 }; // class ElectricPowerServiceManager
 
-	extern std::unique_ptr< ElectricPowerService::ElectricPowerServiceManager > facilityElectricServiceObj;
+	extern std::unique_ptr< ElectricPowerServiceManager > facilityElectricServiceObj;
 
 	void
 	createFacilityElectricPowerServiceObject();
 
 	void
-	clear_state();
+	clearFacilityElectricPowerServiceObject();
 
-} // ElectricPowerService namespace
+
 
 
 } // EnergyPlus namespace

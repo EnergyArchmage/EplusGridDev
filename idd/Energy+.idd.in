@@ -78183,7 +78183,7 @@ ElectricLoadCenter:Distribution,
        \type real
        \units W
   A13, \field Storage Charge Power Fraction Schedule Name
-       \note Controls timing and magnitude of charging from grid.
+       \note Controls timing and magnitude of charging storage.
        \note Required field if Storage Operation Scheme is set to TrackChargeDischargeSchedules.
        \note Schedule values should be fractions from 0.0 to 1.0, inclusive.
        \type object-list
@@ -78195,7 +78195,7 @@ ElectricLoadCenter:Distribution,
        \type real
        \units W
   A14, \field Storage Discharge Power Fraction Schedule Name
-       \note Controls timing and magnitude of discharging to grid.
+       \note Controls timing and magnitude of discharging storage
        \note Required field if Storage Operation Scheme is set to TrackChargeDischargeSchedules.
        \note Schedule values should be fractions from 0.0 to 1.0, inclusive.
   N6,  \field Storage Control Utility Demand Target
