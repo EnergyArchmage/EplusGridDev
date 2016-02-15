@@ -533,7 +533,9 @@ namespace EnergyPlus {
 		this->maxStorageSOCFraction             = 1.0;
 		this->minStorageSOCFraction             = 0.0;
 		this->designStorageChargePower          = 0.0;
-		this->designStoragetDischargePower      = 0.0;
+		this->designStorageChargePowerWasSet    = false;
+		this->designStorageDischargePower       = 0.0;
+		this->designStorageDischargePowerWasSet = false;
 		this->storageChargeModSchedIndex        = 0;
 		this->storageDischargeModSchedIndex     = 0;
 		this->facilityDemandTarget              = 0.0;
@@ -685,6 +687,8 @@ namespace EnergyPlus {
 					ShowContinueError( "Invalid " + DataIPShortCuts::cAlphaFieldNames( 10 ) + " = " + DataIPShortCuts::cAlphaArgs( 10 ) );
 					errorsFound = true;
 				}
+			} else { // blank (preserve legacy behavior for short files)
+				this->storageScheme = StorageOpScheme::facilityDemandStoreExcessOnSite;
 			}
 
 			if ( ! DataIPShortCuts::lAlphaFieldBlanks( 11 ) ) {
@@ -703,10 +707,29 @@ namespace EnergyPlus {
 				this->converterPresent = true;
 			}
 
-			this->maxStorageSOCFraction        = DataIPShortCuts::rNumericArgs( 2 );
-			this->minStorageSOCFraction        = DataIPShortCuts::rNumericArgs( 3 );
-			this->designStorageChargePower     = DataIPShortCuts::rNumericArgs( 4 );
-			this->designStoragetDischargePower = DataIPShortCuts::rNumericArgs( 5 );
+			if ( DataIPShortCuts::lNumericFieldBlanks( 2 ) ) {
+				this->maxStorageSOCFraction  = 1.0;
+			} else {
+				this->maxStorageSOCFraction        = DataIPShortCuts::rNumericArgs( 2 );
+			}
+			if ( DataIPShortCuts::lNumericFieldBlanks( 3 ) ) {
+				this->minStorageSOCFraction        = 0.0;
+			} else {
+				this->minStorageSOCFraction        = DataIPShortCuts::rNumericArgs( 3 );
+			}
+			if ( DataIPShortCuts::lNumericFieldBlanks( 4 ) ) {
+				this->designStorageChargePowerWasSet = false;
+			} else {
+				this->designStorageChargePowerWasSet = true;
+				this->designStorageChargePower     = DataIPShortCuts::rNumericArgs( 4 );
+			}
+			if ( DataIPShortCuts::lNumericFieldBlanks( 5 ) ) {
+				this->designStorageDischargePowerWasSet = false;
+			} else {
+				this->designStorageDischargePowerWasSet = true;
+				this->designStorageDischargePower = DataIPShortCuts::rNumericArgs( 5 );
+			}
+			
 
 			if ( DataIPShortCuts::lNumericFieldBlanks( 6 ) ) {
 				if ( this->storageScheme == StorageOpScheme::facilityDemandLeveling ) {
@@ -840,6 +863,7 @@ namespace EnergyPlus {
 				firstHVACIteration,
 				remainingWholePowerDemand
 			);
+			this->updateLoadCenterGeneratorRecords();
 		} // if generators present
 
 		if ( this->bussType == ElectricBussType::dCBussInverter || this->bussType == ElectricBussType::dCBussInverterACStorage) {
@@ -870,7 +894,6 @@ namespace EnergyPlus {
 			
 		}
 		
-		this->updateLoadCenterRecords();
 		
 
 
@@ -894,8 +917,8 @@ namespace EnergyPlus {
 		// Both the Demand Limit and Track Electrical schemes will sequentially load the available generators.  All demand
 		Real64 loadCenterElectricLoad = 0.0;
 		Real64 remainingLoad          = 0.0;
-		Real64 electricProdRate       = 0.0;
-		Real64 thermalProdRate        = 0.0;
+
+//		Real64 thermalProdRate        = 0.0;
 		Real64 customMeterDemand      = 0.0;
 
 		switch ( this->genOperationScheme ) 
@@ -928,10 +951,10 @@ namespace EnergyPlus {
 				}
 
 				// Get generator's actual electrical and thermal power outputs
-				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, electricProdRate, thermalProdRate );
+				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, this->elecGenCntrlObj[ loopGenNum ]->electProdRate, this->elecGenCntrlObj[ loopGenNum ]->thermProdRate );
 
 				this->totalPowerRequest += this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep;
-				remainingWholePowerDemand -= electricProdRate; // Update whole building remaining load
+				remainingWholePowerDemand -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update whole building remaining load
 			}
 			break;
 		}
@@ -975,7 +998,7 @@ namespace EnergyPlus {
 				}
 
 				// Get generator's actual electrical and thermal power outputs
-				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, electricProdRate, thermalProdRate );
+				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, this->elecGenCntrlObj[ loopGenNum ]->electProdRate, this->elecGenCntrlObj[ loopGenNum ]->thermProdRate );
 
 				if ( this->elecGenCntrlObj[ loopGenNum ]->eMSRequestOn ) {
 					this->totalPowerRequest += max( this->elecGenCntrlObj[ loopGenNum ]->eMSPowerRequest, 0.0 );
@@ -985,8 +1008,8 @@ namespace EnergyPlus {
 						this->totalPowerRequest = min( loadCenterElectricLoad, this->totalPowerRequest );
 					}
 				}
-				remainingLoad -= electricProdRate; // Update remaining load to be met by this load center
-				remainingWholePowerDemand -= electricProdRate; // Update whole building remaining load
+				remainingLoad -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update remaining load to be met by this load center
+				remainingWholePowerDemand -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update whole building remaining load
 			}
 			break;
 		}
@@ -1028,7 +1051,7 @@ namespace EnergyPlus {
 				}
 
 				// Get generator's actual electrical and thermal power outputs
-				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, electricProdRate, thermalProdRate );
+				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, this->elecGenCntrlObj[ loopGenNum ]->electProdRate, this->elecGenCntrlObj[ loopGenNum ]->thermProdRate );
 
 				if ( this->elecGenCntrlObj[ loopGenNum ]->eMSRequestOn ) {
 					this->totalPowerRequest += max( this->elecGenCntrlObj[ loopGenNum ]->eMSPowerRequest, 0.0 );
@@ -1038,8 +1061,8 @@ namespace EnergyPlus {
 						this->totalPowerRequest = min( loadCenterElectricLoad, this->totalPowerRequest );
 					}
 				}
-				remainingLoad -= electricProdRate; // Update remaining load to be met by this load center
-				remainingWholePowerDemand -= electricProdRate; // Update whole building remaining load
+				remainingLoad -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update remaining load to be met by this load center
+				remainingWholePowerDemand -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update whole building remaining load
 			}
 			break;
 		}
@@ -1084,7 +1107,7 @@ namespace EnergyPlus {
 				}
 
 				// Get generator's actual electrical and thermal power outputs
-				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, electricProdRate, thermalProdRate );
+				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, this->elecGenCntrlObj[ loopGenNum ]->electProdRate, this->elecGenCntrlObj[ loopGenNum ]->thermProdRate );
 
 				if ( this->elecGenCntrlObj[ loopGenNum ]->eMSRequestOn ) {
 					this->totalPowerRequest += max( this->elecGenCntrlObj[ loopGenNum ]->eMSPowerRequest, 0.0 );
@@ -1094,8 +1117,8 @@ namespace EnergyPlus {
 						this->totalPowerRequest = min( loadCenterElectricLoad, this->totalPowerRequest );
 					}
 				}
-				remainingLoad -= electricProdRate; // Update remaining load to be met by this load center
-				remainingWholePowerDemand -= electricProdRate; // Update whole building remaining load
+				remainingLoad -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update remaining load to be met by this load center
+				remainingWholePowerDemand -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update whole building remaining load
 			}
 			break;
 		}
@@ -1140,7 +1163,7 @@ namespace EnergyPlus {
 				}
 
 				// Get generator's actual electrical and thermal power outputs
-				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, electricProdRate, thermalProdRate );
+				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, this->elecGenCntrlObj[ loopGenNum ]->electProdRate, this->elecGenCntrlObj[ loopGenNum ]->thermProdRate );
 
 				if ( this->elecGenCntrlObj[ loopGenNum ]->eMSRequestOn ) {
 					this->totalPowerRequest += max( this->elecGenCntrlObj[ loopGenNum ]->eMSPowerRequest, 0.0 );
@@ -1150,8 +1173,8 @@ namespace EnergyPlus {
 						this->totalPowerRequest = min( loadCenterElectricLoad, this->totalPowerRequest );
 					}
 				}
-				remainingLoad -= electricProdRate; // Update remaining load to be met by this load center
-				remainingWholePowerDemand -= electricProdRate; // Update whole building remaining load
+				remainingLoad -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update remaining load to be met by this load center
+				remainingWholePowerDemand -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update whole building remaining load
 			} // end for
 			break;
 		}
@@ -1194,7 +1217,7 @@ namespace EnergyPlus {
 				}
 
 				// Get generator's actual electrical and thermal power outputs
-				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, electricProdRate, thermalProdRate );
+				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, this->elecGenCntrlObj[ loopGenNum ]->electProdRate, this->elecGenCntrlObj[ loopGenNum ]->thermProdRate );
 
 				if ( this->elecGenCntrlObj[ loopGenNum ]->eMSRequestOn ) {
 					this->totalThermalPowerRequest += ( max( this->elecGenCntrlObj[ loopGenNum ]->eMSPowerRequest, 0.0 ) ) * this->elecGenCntrlObj[ loopGenNum ]->nominalThermElectRatio;
@@ -1213,9 +1236,9 @@ namespace EnergyPlus {
 						}
 					}
 				}
-				remainingThermalLoad -= thermalProdRate; // Update remaining load to be met
+				remainingThermalLoad -= this->elecGenCntrlObj[ loopGenNum ]->thermProdRate; // Update remaining load to be met
 				// by this load center
-				remainingWholePowerDemand -= electricProdRate; // Update whole building remaining load
+				remainingWholePowerDemand -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update whole building remaining load
 			}
 			break;
 		}
@@ -1258,7 +1281,7 @@ namespace EnergyPlus {
 					}
 				}
 				// Get generator's actual electrical and thermal power outputs
-				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, electricProdRate, thermalProdRate );
+				this->elecGenCntrlObj[ loopGenNum ]->simGeneratorGetPowerOutput ( this->elecGenCntrlObj[ loopGenNum ]->onThisTimestep, this->elecGenCntrlObj[ loopGenNum ]->powerRequestThisTimestep, firstHVACIteration, this->elecGenCntrlObj[ loopGenNum ]->electProdRate, this->elecGenCntrlObj[ loopGenNum ]->thermProdRate );
 
 				if ( this->elecGenCntrlObj[ loopGenNum ]->eMSRequestOn ) {
 					this->totalThermalPowerRequest += ( max( this->elecGenCntrlObj[ loopGenNum ]->eMSPowerRequest, 0.0 ) ) * this->elecGenCntrlObj[ loopGenNum ]->nominalThermElectRatio;
@@ -1278,9 +1301,9 @@ namespace EnergyPlus {
 						this->totalPowerRequest = min( loadCenterElectricLoad, this->totalPowerRequest );
 					}
 				}
-				remainingThermalLoad -= thermalProdRate; // Update remaining thermal load to
+				remainingThermalLoad -= this->elecGenCntrlObj[ loopGenNum ]->thermProdRate; // Update remaining thermal load to
 				// be met by this load center
-				remainingWholePowerDemand -= electricProdRate; // Update whole building remaining
+				remainingWholePowerDemand -= this->elecGenCntrlObj[ loopGenNum ]->electProdRate; // Update whole building remaining
 				// electric load
 			}
 			break;
@@ -1295,6 +1318,7 @@ namespace EnergyPlus {
 		this->genElectricProd = 0.0;
 		for ( auto loop=0; loop < this->numGenerators ; ++loop ) {
 			this->genElectProdRate += this->elecGenCntrlObj[ loop ]->electProdRate; 
+			this->elecGenCntrlObj[ loop ]->electricityProd = this->elecGenCntrlObj[ loop ]->electProdRate * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 			this->genElectricProd += this->elecGenCntrlObj[ loop ]->electricityProd;
 		}
 
@@ -1437,8 +1461,8 @@ namespace EnergyPlus {
 
 				} else if ( this->storOpCVGenRate > ( adjustedFeedInRequest ) ) {
 					//add to storage
-					this->storOpCVDischargeRate = this->storOpCVGenRate - adjustedFeedInRequest;
-					this->storOpCVChargeRate    = 0.0;
+					this->storOpCVDischargeRate = 0.0;
+					this->storOpCVChargeRate    = this->storOpCVGenRate - adjustedFeedInRequest;
 					this->storOpIsCharging      = true;
 					this->storOpIsDischarging   = false;
 
@@ -1454,7 +1478,7 @@ namespace EnergyPlus {
 
 			case StorageOpScheme::chargeDischargeSchedules : {
 				this->storOpCVChargeRate    = this->designStorageChargePower * ScheduleManager::GetCurrentScheduleValue( this->storageChargeModSchedIndex );
-				this->storOpCVDischargeRate = this->designStoragetDischargePower * ScheduleManager::GetCurrentScheduleValue( this->storageDischargeModSchedIndex );
+				this->storOpCVDischargeRate = this->designStorageDischargePower * ScheduleManager::GetCurrentScheduleValue( this->storageDischargeModSchedIndex );
 				Real64 genAndStorSum = this->storOpCVGenRate + this->storOpCVDischargeRate - this->storOpCVChargeRate;
 				if ( genAndStorSum >= 0.0 ) { // power to feed toward main panel
 					this->storOpCVDrawRate  = 0.0;
@@ -1551,9 +1575,12 @@ namespace EnergyPlus {
 		}
 
 		//check against the controller limits
-		this->storOpCVChargeRate    = min( this->storOpCVChargeRate,    this->designStorageChargePower );
-		this->storOpCVDischargeRate = min( this->storOpCVDischargeRate, this->designStoragetDischargePower );
-
+		if ( this->designStorageChargePowerWasSet ) {
+			this->storOpCVChargeRate    = min( this->storOpCVChargeRate,    this->designStorageChargePower );
+		}
+		if ( this->designStorageDischargePowerWasSet ) {
+			this->storOpCVDischargeRate = min( this->storOpCVDischargeRate, this->designStorageDischargePower );
+		}
 
 		//dispatch final request to storage device, calculate, update, and report storage device, passing what controller wants for SOC limits
 
@@ -1658,7 +1685,7 @@ namespace EnergyPlus {
 	}
 
 	void
-	ElectPowerLoadCenter::updateLoadCenterRecords()
+	ElectPowerLoadCenter::updateLoadCenterGeneratorRecords()
 	{
 		if ( this->generatorsPresent) { //TODO revise for no generators storage 
 
@@ -1744,7 +1771,7 @@ namespace EnergyPlus {
 			this->thermalProdRate = 0.0;
 			this->thermalProd = 0.0;
 			for ( auto loop=0; loop < this->numGenerators ; ++loop ) { 
-				this->thermalProdRate += this->elecGenCntrlObj[ loop ]->thermalProdRate;
+				this->thermalProdRate += this->elecGenCntrlObj[ loop ]->thermProdRate;
 				this->thermalProd += this->elecGenCntrlObj[ loop ]->thermalProd;
 			}
 		}
@@ -1804,7 +1831,7 @@ namespace EnergyPlus {
 		this->electricityProd= 0.0;
 		this->electProdRate= 0.0;
 		this->thermalProd= 0.0;
-		this->thermalProdRate= 0.0;
+		this->thermProdRate= 0.0;
 
 		std::string const routineName = "GeneratorController constructor ";
 		bool errorsFound = false;
@@ -1878,7 +1905,7 @@ namespace EnergyPlus {
 		this->electricityProd   = 0.0;
 		this->electProdRate     = 0.0;
 		this->thermalProd       = 0.0;
-		this->thermalProdRate   = 0.0;
+		this->thermProdRate   = 0.0;
 	}
 
 	void
@@ -1895,51 +1922,51 @@ namespace EnergyPlus {
 		{
 		case GeneratorType::iCEngine: {
 			ICEngineElectricGenerator::SimICEngineGenerator( DataGlobalConstants::iGeneratorICEngine, this->name, this->generatorIndex, runFlag, myElecLoadRequest, FirstHVACIteration );
-			ICEngineElectricGenerator::GetICEGeneratorResults( DataGlobalConstants::iGeneratorICEngine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
+			ICEngineElectricGenerator::GetICEGeneratorResults( DataGlobalConstants::iGeneratorICEngine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
-			thermalPowerOutput = this->thermalProdRate;
+			thermalPowerOutput = this->thermProdRate;
 			break;
 		}
 		case GeneratorType::combTurbine: {
 			CTElectricGenerator::SimCTGenerator( DataGlobalConstants::iGeneratorCombTurbine, this->name, this->generatorIndex, runFlag, myElecLoadRequest, FirstHVACIteration );
-			CTElectricGenerator::GetCTGeneratorResults( DataGlobalConstants::iGeneratorCombTurbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
+			CTElectricGenerator::GetCTGeneratorResults( DataGlobalConstants::iGeneratorCombTurbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
-			thermalPowerOutput = this->thermalProdRate;
+			thermalPowerOutput = this->thermProdRate;
 			break;
 		}
 		case GeneratorType::pV: {
 			Photovoltaics::SimPVGenerator( DataGlobalConstants::iGeneratorPV, this->name, this->generatorIndex, runFlag, myElecLoadRequest );
-			Photovoltaics::GetPVGeneratorResults( DataGlobalConstants::iGeneratorPV, this->generatorIndex, this->dCElectProdRate, this->dCElectricityProd, this->thermalProdRate, this->thermalProd );
+			Photovoltaics::GetPVGeneratorResults( DataGlobalConstants::iGeneratorPV, this->generatorIndex, this->dCElectProdRate, this->dCElectricityProd, this->thermProdRate, this->thermalProd );
 			electricPowerOutput = this->dCElectProdRate;
-			thermalPowerOutput = this->thermalProdRate;
+			thermalPowerOutput = this->thermProdRate;
 			break;
 		}
 		case GeneratorType::fuelCell: {
 			FuelCellElectricGenerator::SimFuelCellGenerator( DataGlobalConstants::iGeneratorFuelCell, this->name, this->generatorIndex, runFlag, myElecLoadRequest, FirstHVACIteration );
-			FuelCellElectricGenerator::GetFuelCellGeneratorResults( DataGlobalConstants::iGeneratorFuelCell, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
+			FuelCellElectricGenerator::GetFuelCellGeneratorResults( DataGlobalConstants::iGeneratorFuelCell, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
-			thermalPowerOutput = this->thermalProdRate;
+			thermalPowerOutput = this->thermProdRate;
 			break;
 		}
 		case GeneratorType::microCHP: {
 			MicroCHPElectricGenerator::SimMicroCHPGenerator( DataGlobalConstants::iGeneratorMicroCHP, this->name, this->generatorIndex, runFlag, false, myElecLoadRequest, DataPrecisionGlobals::constant_zero, FirstHVACIteration );
-			MicroCHPElectricGenerator::GetMicroCHPGeneratorResults( DataGlobalConstants::iGeneratorMicroCHP, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
+			MicroCHPElectricGenerator::GetMicroCHPGeneratorResults( DataGlobalConstants::iGeneratorMicroCHP, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
-			thermalPowerOutput = this->thermalProdRate;
+			thermalPowerOutput = this->thermProdRate;
 			break;
 		}
 		case GeneratorType::microturbine: {
 			MicroturbineElectricGenerator::SimMTGenerator( DataGlobalConstants::iGeneratorMicroturbine, this->name, this->generatorIndex, runFlag, myElecLoadRequest, FirstHVACIteration );
-			MicroturbineElectricGenerator::GetMTGeneratorResults( DataGlobalConstants::iGeneratorMicroturbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
+			MicroturbineElectricGenerator::GetMTGeneratorResults( DataGlobalConstants::iGeneratorMicroturbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
-			thermalPowerOutput = this->thermalProdRate;
+			thermalPowerOutput = this->thermProdRate;
 			break;
 		}
 		case GeneratorType::windTurbine: {
 			WindTurbine::SimWindTurbine( DataGlobalConstants::iGeneratorWindTurbine, this->name, this->generatorIndex, runFlag, myElecLoadRequest );
-			WindTurbine::GetWTGeneratorResults( DataGlobalConstants::iGeneratorWindTurbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermalProdRate, this->thermalProd );
+			WindTurbine::GetWTGeneratorResults( DataGlobalConstants::iGeneratorWindTurbine, this->generatorIndex, this->electProdRate, this->electricityProd, this->thermProdRate, this->thermalProd );
 			electricPowerOutput = this->electProdRate;
-			thermalPowerOutput = this->thermalProdRate;
+			thermalPowerOutput = this->thermProdRate;
 			break;
 		}
 		case GeneratorType::notYetSet: {
@@ -2296,7 +2323,7 @@ namespace EnergyPlus {
 		this->conversionLossPower = this->dCPowerIn - this->aCPowerOut;
 		this->conversionLossEnergy = this->conversionLossPower * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->conversionLossEnergyDecrement = -1.0 * this->conversionLossEnergy;
-		this->thermLossRate    = this->dCPowerIn - this->aCPowerOut + this->standbyPower;
+		this->thermLossRate    = this->dCPowerIn - this->aCPowerOut + this->ancillACuseRate;
 		this->thermLossEnergy = this->thermLossRate * ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->qdotConvZone    = this->thermLossRate * ( 1.0 - this->zoneRadFract );
 		this->qdotRadZone     = this->thermLossRate * this->zoneRadFract;

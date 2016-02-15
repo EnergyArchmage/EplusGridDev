@@ -7992,18 +7992,18 @@ namespace OutputReportTabular {
 			// show annual values
 			unconvert = largeConversionFactor / 1000000000.0; //to avoid double converting, the values for the LEED report should be in GJ
 
-			tableBody( 1, 1 ) = RealToStr( gatherPowerFuelFireGen, 2 );
-			tableBody( 1, 2 ) = RealToStr( gatherPowerHTGeothermal, 2 );
-			tableBody( 1, 3 ) = RealToStr( gatherPowerPV, 2 );
+			tableBody( 1, 1 ) = RealToStr( gatherPowerFuelFireGen, 4 );
+			tableBody( 1, 2 ) = RealToStr( gatherPowerHTGeothermal, 4 );
+			tableBody( 1, 3 ) = RealToStr( gatherPowerPV, 4 );
 			PreDefTableEntry( pdchLeedRenAnGen, "Photovoltaic", unconvert * gatherPowerPV, 2 );
-			tableBody( 1, 4 ) = RealToStr( gatherPowerWind, 2 );
+			tableBody( 1, 4 ) = RealToStr( gatherPowerWind, 4 );
 			PreDefTableEntry( pdchLeedRenAnGen, "Wind", unconvert * gatherPowerWind, 2 );
-			tableBody( 1, 5 ) = RealToStr( gatherPowerConversion, 2 );
-			tableBody( 1, 6 ) = RealToStr( OverallNetEnergyFromStorage, 2 );
-			tableBody( 1, 7 ) = RealToStr( gatherElecProduced, 2 );
-			tableBody( 1, 9 ) = RealToStr( gatherElecPurchased, 2 );
-			tableBody( 1, 10 ) = RealToStr( gatherElecSurplusSold, 2 );
-			tableBody( 1, 11 ) = RealToStr( gatherElecPurchased - gatherElecSurplusSold, 2 );
+			tableBody( 1, 5 ) = RealToStr( gatherPowerConversion, 4 );
+			tableBody( 1, 6 ) = RealToStr( OverallNetEnergyFromStorage, 4 );
+			tableBody( 1, 7 ) = RealToStr( gatherElecProduced, 4 );
+			tableBody( 1, 9 ) = RealToStr( gatherElecPurchased, 4 );
+			tableBody( 1, 10 ) = RealToStr( gatherElecSurplusSold, 4 );
+			tableBody( 1, 11 ) = RealToStr( gatherElecPurchased - gatherElecSurplusSold, 4 );
 			tableBody( 1, 13 ) = RealToStr( gatherElecProduced + ( gatherElecPurchased - gatherElecSurplusSold ), 2 );
 			tableBody( 1, 14 ) = RealToStr( collapsedTotal( 1 ), 2 );
 

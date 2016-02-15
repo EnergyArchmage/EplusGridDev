@@ -846,7 +846,7 @@ private: // Creation
 		electricityProd( 0.0 ),
 		electProdRate( 0.0 ),
 		thermalProd( 0.0 ),
-		thermalProdRate( 0.0 )
+		thermProdRate( 0.0 )
 	{}
 
 	// Copy Constructor
@@ -922,7 +922,7 @@ public: // data // might make this class a friend of ElectPowerLoadCenter?
 	Real64 electricityProd; // Current AC Electric Produced from Equipment (J)
 	Real64 electProdRate; // Current AC Electric Production Rate from Equipment (W)
 	Real64 thermalProd; // Current Thermal energy Produced from Equipment (J)
-	Real64 thermalProdRate; // Current Thermal energy Production Rate from Equipment (W)
+	Real64 thermProdRate; // Current Thermal energy Production Rate from Equipment (W)
 }; //class GeneratorController
 
 class ElectPowerLoadCenter
@@ -985,7 +985,9 @@ private: // Creation
 		maxStorageSOCFraction( 1.0 ),
 		minStorageSOCFraction( 0.0 ),
 		designStorageChargePower( 0.0 ),
-		designStoragetDischargePower( 0.0 ),
+		designStorageChargePowerWasSet( false ),
+		designStorageDischargePower( 0.0 ),
+		designStorageDischargePowerWasSet( false ),
 		storageChargeModSchedIndex( 0 ),
 		storageDischargeModSchedIndex( 0 ),
 		facilityDemandTarget( 0.0 ),
@@ -1037,7 +1039,7 @@ public: // Methods
 	getTransformerName();
 
 	void
-	updateLoadCenterRecords();
+	updateLoadCenterGeneratorRecords();
 
 private: //Methods
 
@@ -1162,7 +1164,9 @@ private: // data
 	Real64 maxStorageSOCFraction; // Fraction of storage capacity used as upper limit for controlling charging (don't overcharge the batteries)
 	Real64 minStorageSOCFraction; // Fraction of storage capacity used as lower limit for controlling discharging (dont drain the batteries too far)
 	Real64 designStorageChargePower; // rate of electric power drawn from grid to go into storage
-	Real64 designStoragetDischargePower; // rate of electric power exported to grid by being drawn from storage.  
+	bool designStorageChargePowerWasSet; // true if a value was input
+	Real64 designStorageDischargePower; // rate of electric power exported to grid by being drawn from storage
+	bool designStorageDischargePowerWasSet; // true if value was input
 	int storageChargeModSchedIndex; // index of fraction schedule for controlling charge rate over time
 	int storageDischargeModSchedIndex; // index of fraction schedule for controlling discharge rate over time.
 	Real64 facilityDemandTarget; // target utility demand level in Watts
