@@ -162,20 +162,6 @@ namespace EnergyPlus {
 				this->facilityPowerInTransformerObj->manageTransformers( 0.0 );
 			}
 
-			if ( this->numPowerOutTransformers > 0 ) {
-				for (auto loopPowerOutTransformers = 0; loopPowerOutTransformers < this->numPowerOutTransformers; ++loopPowerOutTransformers) {
-					//determine surplus production from the load centers connected to this transformer
-//					auto loadCenters = this->powerOutTransformerObjs[ loopPowerOutTransformers ]->getLoadCenterObjIndices;
-//					for (std::size_t loopLoadCenters = 0; loopLoadCenters < loadCenters.size; ++loopLoadCenters){
-	// this needs to be from takin the total surplus out to utility grid and partitioning out what fraction of that is from the load centers that point to this transformer.  TODO
-	// legacy code is not correct. defer for now. 
-
-	//					this->elecLoadCenterObjs[ loadCenters[ loopLoadCenters ] ]->
-//					}
-
-				}
-			}
-
 			this->updateWholeBuildingRecords();
 			return;
 		}
@@ -193,25 +179,8 @@ namespace EnergyPlus {
 		}
 
 		this->updateWholeBuildingRecords();
-		if ( this->numPowerOutTransformers >0 ){
-
-			for ( auto loopPowerOutTransformers = 0; loopPowerOutTransformers < this->numPowerOutTransformers; ++loopPowerOutTransformers ) {
-			//	Real64 surplusPower = 0.0;
-
-// TODO this needs to be done in a better way. 
-// should be only one
-			//	if ( this->powerOutTransformerObjs[ loopPowerOutTransformers ]->numLoadCenters > 0 ) {
-			//		for (auto loopLoadCenters = 0; loopLoadCenters < this->powerOutTransformerObjs[ loopPowerOutTransformers ]->numLoadCenters; ++loopLoadCenters) {
-			//			int thisLoadCenterIndex = this->powerOutTransformerObjs[ loopPowerOutTransformers ]->loadCenterObjIndexes[ loopLoadCenters ];
-
-			//			surplusPower += max( this->elecLoadCenterObjs[ thisLoadCenterIndex ]->electProdRate - this->elecLoadCenterObjs[ thisLoadCenterIndex ]->electDemand, 0.0);
-
-			//		}
-				
-
-				this->powerOutTransformerObjs[ loopPowerOutTransformers ]->manageTransformers( this->electSurplusRate );
-
-			}
+		if ( this->powerOutTransformerObj != nullptr ){
+			this->powerOutTransformerObj->manageTransformers( this->electSurplusRate );
 		}
 
 
@@ -233,10 +202,8 @@ namespace EnergyPlus {
 		if ( this->facilityPowerInTransformerPresent ) {
 			this->facilityPowerInTransformerObj->reinitZoneGainsAtBeginEnvironment();
 		}
-		if ( this->numPowerOutTransformers > 0 ) {
-			for ( auto loop = 0; loop < this->numPowerOutTransformers; ++loop ) {
-				this->powerOutTransformerObjs[ loop ]->reinitZoneGainsAtBeginEnvironment();
-			}
+		if ( this->powerOutTransformerObj != nullptr ) {
+				this->powerOutTransformerObj->reinitZoneGainsAtBeginEnvironment();
 		}
 		if ( this->numLoadCenters > 0 ) {
 			for ( auto loop = 0; loop < this->numLoadCenters; ++loop ) {
@@ -259,9 +226,31 @@ namespace EnergyPlus {
 		}
 	
 	} else {
-// TODO check that the distribution object isn't just missing but is needed. #issue 4639
-	
-
+		// #issue 4639. see if there are any generators, inverters, converters, or storage devcies, that really need a ElectricLoadCenter:Distribution
+		int numGenLists   = InputProcessor::GetNumObjectsFound( "ElectricLoadCenter:Generators" );
+		if ( numGenLists > 0 ) {
+			ShowWarningError( "ElectricLoadCenter:Generators input object requires an ElectricLoadCenterDistribution input object." );
+		}
+		int numInverters  = InputProcessor::GetNumObjectsFound( "ElectricLoadCenter:Inverter:Simple" );
+			numInverters += InputProcessor::GetNumObjectsFound( "ElectricLoadCenter:Inverter:FunctionOfPower" );
+			numInverters += InputProcessor::GetNumObjectsFound( "ElectricLoadCenter:Inverter:LookUpTable" );
+		if ( numInverters > 0 ) {
+			ShowWarningError( "ElectricLoadCenter:Inverter:* input objects require an ElectricLoadCenter:Distribution input object." );
+		}
+		int numStorage    = InputProcessor::GetNumObjectsFound( "ElectricLoadCenter:Storage:Simple" );
+			numStorage   += InputProcessor::GetNumObjectsFound( "ElectricLoadCenter:Storage:Battery" );
+		if ( numStorage > 0 ) {
+			ShowWarningError( "ElectricLoadCenter:Storage:* input objects require an ElectricLoadCenter:Distribution input object." );
+		}
+		int numGenerators  = InputProcessor::GetNumObjectsFound( "Generator:InternalCombustionEngine" );
+			numGenerators += InputProcessor::GetNumObjectsFound( "Generator:CombustionTurbine" );
+			numGenerators += InputProcessor::GetNumObjectsFound( "Generator:MicroCHP" );
+			numGenerators += InputProcessor::GetNumObjectsFound( "Generator:FuelCell" );
+			numGenerators += InputProcessor::GetNumObjectsFound( "Generator:Photovoltaic" );
+			numGenerators += InputProcessor::GetNumObjectsFound( "Generator:WindTurbine" );
+		if ( numGenerators > 0 ) {
+			ShowWarningError( "Electric generator input objects require and ElectricLoadCenter:Distribution input object." );
+		}
 			// if user input did not include an Electric Load center, create a simple default one here for reporting purposes
 		//   but only if there are any other electricity components set up (yet) for metering
 		int anyElectricityPresent = GetMeterIndex( "ELECTRICITY:FACILITY" );
@@ -280,7 +269,7 @@ namespace EnergyPlus {
 		int iOStat; // IO Status when calling get input subroutine
 		int facilityPowerInTransformerIDFObjNum = 0;
 		bool foundInFromGridTransformer = false;
-//		bool foundPowerOutFromOnsiteTransformer = false;
+
 
 		DataIPShortCuts::cCurrentModuleObject =  "ElectricLoadCenter:Transformer";
 		for ( auto loopTransformer = 1; loopTransformer <= this->numTransformers; ++loopTransformer) {
@@ -299,9 +288,15 @@ namespace EnergyPlus {
 					ShowContinueError("Only one transformer with Usage PowerInFromGrid can be used, first one in input file will be used and the simulation continues...");
 				}
 			} else if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "PowerOutFromOnsiteGeneration" ) ) {
-				++this->numPowerOutTransformers;
-				this->powerOutTransformerNames.push_back( DataIPShortCuts::cAlphaArgs( 1 ) ) ;
-				this->powerOutTransformerObjs.emplace_back( new ElectricTransformer ( DataIPShortCuts::cAlphaArgs( 1 ) ) );
+				if ( this->powerOutTransformerObj == nullptr ) {
+					++this->numPowerOutTransformers;
+					this->powerOutTransformerName = DataIPShortCuts::cAlphaArgs( 1 );
+					this->powerOutTransformerObj = std::unique_ptr < ElectricTransformer > ( new ElectricTransformer ( this->powerOutTransformerName ) );
+					
+				} else {
+					ShowWarningError( "Found two transformers that are both set to PowerOutFromOnsiteGeneration, however only the first one will be used." );
+				}
+
 			}
 		}
 		if ( foundInFromGridTransformer ) {
@@ -310,15 +305,7 @@ namespace EnergyPlus {
 		}
 	} // if transformers
 
-	// loop over power out transformers and electric load centers and register load center object index
-	for (auto loopPowerOutTransformers = 0; loopPowerOutTransformers < this->numPowerOutTransformers; ++loopPowerOutTransformers ) {
 
-		for ( auto loopElectLoadCenters = 0; loopElectLoadCenters < this->numLoadCenters; ++loopElectLoadCenters ) {
-			if (InputProcessor::SameString( this->powerOutTransformerNames[ loopPowerOutTransformers ], this->elecLoadCenterObjs[ loopElectLoadCenters ]->getTransformerName() ) ){
-				this->powerOutTransformerObjs[ loopPowerOutTransformers ]->addLoadCenterIndex( loopElectLoadCenters );
-			}
-		}
-	}
 
 	if ( this->numLoadCenters > 0 ) { 
 		SetupOutputVariable( "Facility Total Purchased Electric Power [W]", this->electPurchRate, "System", "Average", this->name );
@@ -394,10 +381,8 @@ namespace EnergyPlus {
 		if ( this->facilityPowerInTransformerPresent ) {
 			facilityPowerInTransformerObj->reinitAtBeginEnvironment();
 		}
-		if ( this->numPowerOutTransformers > 0 ) {
-			for (auto loopOutTransformers = 0; loopOutTransformers < this->numPowerOutTransformers ; ++loopOutTransformers ) {
-				this->powerOutTransformerObjs[ loopOutTransformers ]->reinitAtBeginEnvironment();
-			}
+		if ( this->powerOutTransformerObj != nullptr ) {
+			this->powerOutTransformerObj->reinitAtBeginEnvironment();
 		}
 	}
 
@@ -415,7 +400,6 @@ namespace EnergyPlus {
 
 		// main panel clearing house.
 
-		// where do subpanel draws come in? 
 		this->totalBldgElecDemand = GetInstantMeterValue( this->elecFacilityIndex, 1 ) / DataGlobals::TimeStepZoneSec;
 		this->totalHVACElecDemand = GetInstantMeterValue( this->elecFacilityIndex, 2 ) / ( DataHVACGlobals::TimeStepSys * DataGlobals::SecInHour );
 		this->totalElectricDemand = this->totalBldgElecDemand + this->totalHVACElecDemand;
@@ -474,7 +458,7 @@ namespace EnergyPlus {
 		OutputReportPredefined::PreDefTableEntry( OutputReportPredefined::pdchLeedRenRatCap, "Photovoltaic", this->pvTotalCapacity / 1000, 2 );
 		OutputReportPredefined::PreDefTableEntry( OutputReportPredefined::pdchLeedRenRatCap, "Wind", this->windTotalCapacity / 1000, 2 );
 
-		//TODO, this approach is relying on the correct power output to have been placed in the Generator list.  There could be a difference between this control input and the actual size of the systems as defined as generators.
+		//future work: this legacy approach is relying on the correct power output to have been placed in the Generator list.  There could be a difference between this control input and the actual size of the systems as defined in the generator objects.
 
 	}
 
@@ -813,11 +797,16 @@ namespace EnergyPlus {
 		}
 
 		if ( ! errorsFound && this->transformerPresent ) {
-// TODO figure out if the transformer is of usage type LoadCenterProductionConditioning, new for v8.5
-			
-			//call transformer constructor 
 
-			//this->transformerObj = std::unique_ptr < ElectricTransformer >( new ElectricTransformer (this->transformerName ) );
+			DataIPShortCuts::cCurrentModuleObject =  "ElectricLoadCenter:Transformer";
+			int transformerItemNum = InputProcessor::GetObjectItemNum( DataIPShortCuts::cCurrentModuleObject, this->transformerName );
+			int iOStat;
+			InputProcessor::GetObjectItem( DataIPShortCuts::cCurrentModuleObject, transformerItemNum, DataIPShortCuts::cAlphaArgs, numAlphas, DataIPShortCuts::rNumericArgs, numNums, iOStat, DataIPShortCuts::lNumericFieldBlanks, DataIPShortCuts::lAlphaFieldBlanks, DataIPShortCuts::cAlphaFieldNames, DataIPShortCuts::cNumericFieldNames  );
+			if ( InputProcessor::SameString( DataIPShortCuts::cAlphaArgs( 3 ), "LoadCenterPowerConditioning" ) ) { // this is the right kind of transformer
+				this->transformerObj = std::unique_ptr < ElectricTransformer >( new ElectricTransformer (this->transformerName ) );
+			} else {
+				ShowWarningError( "Transformer named " + this->transformerName + " associated with the load center named " + this->name + " should have " + DataIPShortCuts::cAlphaFieldNames( 3 ) + " set to LoadCenterPowerConditioning." );
+			}
 		}
 
 		if ( ! errorsFound && this->converterPresent ) {
@@ -846,7 +835,6 @@ namespace EnergyPlus {
 				SetupEMSActuator( "Electrical Storage", this->name , "Power Draw Rate", "[W]", this->eMSOverridePelFromStorage, this->eMSValuePelFromStorage );
 				SetupEMSActuator( "Electrical Storage", this->name , "Power Charge Rate", "[W]", this->eMSOverridePelIntoStorage, this->eMSValuePelIntoStorage );
 		}
-
 	}
 
 	void
@@ -3954,7 +3942,6 @@ namespace EnergyPlus {
 		this->considerLosses = true;
 		this->ratedNL = 0.0;
 		this->ratedLL = 0.0;
-		this->numLoadCenters = 0;
 		this->overloadErrorIndex = 0;
 		this->efficiency = 0.0;
 		this->powerIn = 0.0;
@@ -4131,22 +4118,6 @@ namespace EnergyPlus {
 		if ( errorsFound ) {
 			ShowFatalError( routineName + "Preceding errors terminate program." );
 		}
-	}
-
-	void
-	ElectricTransformer::addLoadCenterIndex( 
-		int const objectIndex
-	)
-	{
-		++this->numLoadCenters;
-		this->loadCenterObjIndexes.push_back( objectIndex );
-	}
-
-	std::vector< int >
-	ElectricTransformer::getLoadCenterObjIndices()
-	{
-		return this->loadCenterObjIndexes;
-
 	}
 
 	Real64
