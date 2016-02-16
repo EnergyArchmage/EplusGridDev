@@ -56,92 +56,44 @@
 // computer software, distribute, and sublicense such enhancements or derivative works thereof,
 // in binary and source code form.
 
-// EnergyPlus::DataPlant Unit Tests
+// EnergyPlus::AirflowNetworkSolver unit tests
 
-// Google Test Headers
+// Google test headers
 #include <gtest/gtest.h>
 
 // EnergyPlus Headers
-#include <EnergyPlus/DataPlant.hh>
-#include <EnergyPlus/UtilityRoutines.hh>
+#include <EnergyPlus/DataHeatBalance.hh>
+#include <EnergyPlus/HeatBalanceManager.hh>
 
 #include "Fixtures/EnergyPlusFixture.hh"
 
 using namespace EnergyPlus;
-using namespace EnergyPlus::DataPlant;
-using namespace ObjexxFCL;
+using namespace DataHeatBalance;
+using namespace HeatBalanceManager;
 
-TEST_F( EnergyPlusFixture, DataPlant_AnyPlantLoopSidesNeedSim )
-{
-	TotNumLoops = 3;
-	PlantLoop.allocate( TotNumLoops );
-	for ( int l = 1; l <= TotNumLoops; ++l ) {
-		auto & loop( PlantLoop( l ) );
-		loop.LoopSide.allocate( 2 );
-	}
-
-	EXPECT_TRUE( AnyPlantLoopSidesNeedSim() ); // SimLoopSideNeeded is set to true in default ctor
-	SetAllPlantSimFlagsToValue( false ); // Set all SimLoopSideNeeded to false
-	EXPECT_FALSE( AnyPlantLoopSidesNeedSim() );
-}
-
-TEST_F( EnergyPlusFixture, DataPlant_verifyTwoNodeNumsOnSamePlantLoop )
+TEST_F( EnergyPlusFixture, ConstructionInternalSource )
 {
 
-	// not using the DataPlantTest base class because of how specific this one is and that one is very general
-	if ( PlantLoop.allocated() ) PlantLoop.deallocate();
-	TotNumLoops = 2;
-	PlantLoop.allocate( 2 );
-	PlantLoop( 1 ).LoopSide.allocate(2);
-	PlantLoop( 1 ).LoopSide( 1 ).Branch.allocate( 1 );
-	PlantLoop( 1 ).LoopSide( 1 ).Branch( 1 ).Comp.allocate( 1 );
-	PlantLoop( 1 ).LoopSide( 2 ).Branch.allocate( 1 );
-	PlantLoop( 1 ).LoopSide( 2 ).Branch( 1 ).Comp.allocate( 1 );
-	PlantLoop( 2 ).LoopSide.allocate(2);
-	PlantLoop( 2 ).LoopSide( 1 ).Branch.allocate( 1 );
-	PlantLoop( 2 ).LoopSide( 1 ).Branch( 1 ).Comp.allocate( 1 );
-	PlantLoop( 2 ).LoopSide( 2 ).Branch.allocate( 1 );
-	PlantLoop( 2 ).LoopSide( 2 ).Branch( 1 ).Comp.allocate( 1 );
+	std::string const idf_objects = delimited_string({
+		"	Version,8.4;	",
+		"	Construction:InternalSource,	",
+			"	Slab Floor with Radiant, !- Name",
+			"	4,                       !- Source Present After Layer Number",
+			"	4,                       !- Temperature Calculation Requested After Layer Number",
+			"	2,                       !- Dimensions for the CTF Calculation",
+			"	0.3048,                  !- Tube Spacing {m}",
+			"	CONCRETE - DRIED SAND AND GRAVEL 4 IN,  !- Outside Layer",
+			"	INS - EXPANDED EXT POLYSTYRENE R12 2 IN,  !- Layer 2",
+			"	GYP1,                    !- Layer 3",
+			"	GYP2,                    !- Layer 4",
+			"	FINISH FLOORING - TILE 1 / 16 IN;  !- Layer 5",
+	});
 
-	// initialize all node numbers to zero
-	PlantLoop( 1 ).LoopSide( 1 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 0;
-	PlantLoop( 1 ).LoopSide( 1 ).Branch( 1 ).Comp( 1 ).NodeNumOut = 0;
-	PlantLoop( 1 ).LoopSide( 2 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 0;
-	PlantLoop( 1 ).LoopSide( 2 ).Branch( 1 ).Comp( 1 ).NodeNumOut = 0;
-	PlantLoop( 2 ).LoopSide( 1 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 0;
-	PlantLoop( 2 ).LoopSide( 1 ).Branch( 1 ).Comp( 1 ).NodeNumOut = 0;
-	PlantLoop( 2 ).LoopSide( 2 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 0;
-	PlantLoop( 2 ).LoopSide( 2 ).Branch( 1 ).Comp( 1 ).NodeNumOut = 0;
+	ASSERT_FALSE( process_idf( idf_objects ) );
 
-	// specify the node numbers of interest
-	int const nodeNumA = 1;
-	int const nodeNumB = 2;
+	bool errorsFound( false );
 
-	// first test, expected pass
-	PlantLoop( 1 ).LoopSide( 1 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 1;
-	PlantLoop( 1 ).LoopSide( 2 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 2;
-	EXPECT_TRUE( verifyTwoNodeNumsOnSamePlantLoop( nodeNumA, nodeNumB ) );
+	GetConstructData( errorsFound );
 
-	// reset node numbers
-	PlantLoop( 1 ).LoopSide( 1 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 0;
-	PlantLoop( 1 ).LoopSide( 2 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 0;
-
-	// second test, expected false
-	PlantLoop( 1 ).LoopSide( 1 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 1;
-	PlantLoop( 2 ).LoopSide( 1 ).Branch( 1 ).Comp( 1 ).NodeNumIn = 2;
-	EXPECT_FALSE( verifyTwoNodeNumsOnSamePlantLoop( nodeNumA, nodeNumB ) );
-
-	TotNumLoops = 0;
-	PlantLoop( 1 ).LoopSide( 1 ).Branch( 1 ).Comp.deallocate();
-	PlantLoop( 1 ).LoopSide( 1 ).Branch.deallocate();
-	PlantLoop( 1 ).LoopSide( 2 ).Branch( 1 ).Comp.deallocate();
-	PlantLoop( 1 ).LoopSide( 2 ).Branch.deallocate();
-	PlantLoop( 1 ).LoopSide.deallocate();
-	PlantLoop( 2 ).LoopSide( 1 ).Branch( 1 ).Comp.deallocate();
-	PlantLoop( 2 ).LoopSide( 1 ).Branch.deallocate();
-	PlantLoop( 2 ).LoopSide( 2 ).Branch( 1 ).Comp.deallocate();
-	PlantLoop( 2 ).LoopSide( 2 ).Branch.deallocate();
-	PlantLoop( 2 ).LoopSide.deallocate();
-	PlantLoop.allocate( 2 );
-
+	EXPECT_NEAR( 0.1524, Construct( 1 ).ThicknessPerpend, 0.0001 );
 }

@@ -652,7 +652,6 @@ class ElectricTransformer
 private: // Creation
 	// Default Constructor
 		ElectricTransformer() :
-			numLoadCenters( 0 ),
 			name( " "),
 			myOneTimeFlag( true ),
 			availSchedPtr( 0 ),
@@ -737,21 +736,13 @@ public: //methods
 	void
 	reinitZoneGainsAtBeginEnvironment();
 
-	void
-	addLoadCenterIndex( 
-		int const objectIndex
-	);
-
-	std::vector< int >
-	getLoadCenterObjIndices();
 
 
 
 private: //methods
 
 public: 
-	int numLoadCenters; // number of load centers served by the transformer
-	std::vector < int > loadCenterObjIndexes; // index array of load centers served by the transformer
+
 private: //data
 
 	enum class TransformerUse : int {
@@ -1291,8 +1282,8 @@ private: // data
 	std::string facilityPowerInTransformerName; // hold name for verificaton and error messages
 	std::unique_ptr < ElectricTransformer > facilityPowerInTransformerObj;
 	int numPowerOutTransformers;
-	std::vector< std::string > powerOutTransformerNames;
-	std::vector< std::unique_ptr < ElectricTransformer > > powerOutTransformerObjs;
+	std::string powerOutTransformerName;
+	std::unique_ptr < ElectricTransformer >  powerOutTransformerObj;
 
 	Real64 wholeBldgRemainingLoad;
 	Real64 electricityProd; // Current Electric Produced from Equipment (J)
